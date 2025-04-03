@@ -1,4 +1,4 @@
-# 🐺 WolfSound's Audio Plugin Template
+# Audio Plugin Template with Libtorch (thank you wolfsound)
 
 ![Cmake workflow success badge](https://github.com/JanWilczek/audio-plugin-template/actions/workflows/cmake.yml/badge.svg)
 
