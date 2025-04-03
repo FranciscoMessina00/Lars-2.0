@@ -1,8 +1,19 @@
 #include "SlothPlugin/PluginProcessor.h"
 #include "SlothPlugin/PluginEditor.h"
+#include "SlothPlugin/Parameters.h"
 
 namespace audio_plugin {
+/*
+  ==============================================================================
+
+    This file contains the basic framework code for a JUCE plugin processor.
+
+  ==============================================================================
+*/
+
+//==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
+#ifndef JucePlugin_PreferredChannelConfigurations
     : AudioProcessor(
           BusesProperties()
 #if !JucePlugin_IsMidiEffect
@@ -11,11 +22,19 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 #endif
               .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
-      ) {
+              ),
+      params(apvts)
+#endif
+{
+  formatManager.registerBasicFormats();
+  state = Stopped;
 }
 
-AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {}
+AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {
+  formatReader = nullptr;
+}
 
+//==============================================================================
 const juce::String AudioPluginAudioProcessor::getName() const {
   return JucePlugin_Name;
 }
@@ -58,25 +77,22 @@ int AudioPluginAudioProcessor::getCurrentProgram() {
   return 0;
 }
 
-void AudioPluginAudioProcessor::setCurrentProgram(int index) {
-  juce::ignoreUnused(index);
-}
+void AudioPluginAudioProcessor::setCurrentProgram(int index) {}
 
 const juce::String AudioPluginAudioProcessor::getProgramName(int index) {
-  juce::ignoreUnused(index);
   return {};
 }
 
 void AudioPluginAudioProcessor::changeProgramName(int index,
                                                   const juce::String& newName) {
-  juce::ignoreUnused(index, newName);
 }
 
+//==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay(double sampleRate,
                                               int samplesPerBlock) {
-  // Use this method as the place to do any pre-playback
-  // initialisation that you need..
-  juce::ignoreUnused(sampleRate, samplesPerBlock);
+  transport.prepareToPlay(samplesPerBlock, sampleRate);
+
+  // coeff = 1.0 - std::exp(-1.0 / (0.1 * sampleRate));
 }
 
 void AudioPluginAudioProcessor::releaseResources() {
@@ -84,6 +100,7 @@ void AudioPluginAudioProcessor::releaseResources() {
   // spare memory, etc.
 }
 
+#ifndef JucePlugin_PreferredChannelConfigurations
 bool AudioPluginAudioProcessor::isBusesLayoutSupported(
     const BusesLayout& layouts) const {
 #if JucePlugin_IsMidiEffect
@@ -107,37 +124,42 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported(
   return true;
 #endif
 }
+#endif
 
 void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                              juce::MidiBuffer& midiMessages) {
-  juce::ignoreUnused(midiMessages);
-
   juce::ScopedNoDenormals noDenormals;
   auto totalNumInputChannels = getTotalNumInputChannels();
   auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-  // In case we have more outputs than inputs, this code clears any output
-  // channels that didn't contain input data, (because these aren't
-  // guaranteed to be empty - they may contain garbage).
-  // This is here to avoid people getting screaming feedback
-  // when they first compile a plugin, but obviously you don't need to keep
-  // this code if your algorithm always overwrites all the output channels.
+  if (readerSource.get() == nullptr) {
+    buffer.clear();
+    return;
+  }
+
+  double systemSampleRate = getSampleRate();
+  sampleRateRatio = fileSampleRate / systemSampleRate;
+
   for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
     buffer.clear(i, 0, buffer.getNumSamples());
 
-  // This is the place where you'd normally do the guts of your plugin's
-  // audio processing...
-  // Make sure to reset the state if your inner loop is processing
-  // the samples and the outer loop is handling the channels.
-  // Alternatively, you can process the samples with the channels
-  // interleaved by keeping the same state.
-  for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-    auto* channelData = buffer.getWritePointer(channel);
-    juce::ignoreUnused(channelData);
-    // ..do something to the data...
-  }
+  if (params.playButton)
+    sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
+  // sampleCount = params.playButton ? sampleCount +=
+  // static_cast<long>(buffer.getNumSamples() * sampleRateRatio) : 0;
+
+  juce::AudioSourceChannelInfo channelInfo(&buffer, 0, buffer.getNumSamples());
+  transport.getNextAudioBlock(channelInfo);
+
+  /*for (int channel = 0; channel < totalNumInputChannels; ++channel)
+  {
+      auto* channelData = buffer.getWritePointer (channel);
+
+
+  }*/
 }
 
+//==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const {
   return true;  // (change this to false if you choose to not supply an editor)
 }
@@ -146,12 +168,12 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor() {
   return new AudioPluginAudioProcessorEditor(*this);
 }
 
+//==============================================================================
 void AudioPluginAudioProcessor::getStateInformation(
     juce::MemoryBlock& destData) {
   // You should use this method to store your parameters in the memory block.
   // You could do that either as raw data, or use the XML or ValueTree classes
   // as intermediaries to make it easy to save and load complex data.
-  juce::ignoreUnused(destData);
 }
 
 void AudioPluginAudioProcessor::setStateInformation(const void* data,
@@ -159,12 +181,121 @@ void AudioPluginAudioProcessor::setStateInformation(const void* data,
   // You should use this method to restore your parameters from this memory
   // block, whose contents will have been created by the getStateInformation()
   // call.
-  juce::ignoreUnused(data, sizeInBytes);
 }
+
+void AudioPluginAudioProcessor::loadFile() {
+  stopFile();
+  setSampleCount(0);
+  juce::FileChooser chooser{"Please load a file"};
+  if (chooser.browseForFileToOpen()) {
+    auto file = chooser.getResult();
+    auto myFile = std::make_unique<juce::File>(file);
+    fileName = myFile->getFileNameWithoutExtension();
+    formatReader = formatManager.createReaderFor(file);
+    if (formatReader != nullptr) {
+      std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
+          new juce::AudioFormatReaderSource(formatReader, true));
+      transport.setSource(tempSource.get(), 0, nullptr,
+                          formatReader->sampleRate);
+      transportStateChanged(Stopped);
+      readerSource.reset(tempSource.release());
+      auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
+      waveform.setSize(2, sampleLenght);
+      formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
+      fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
+    }
+  }
+}
+
+void AudioPluginAudioProcessor::loadFile(const juce::String& path) {
+  stopFile();
+  setSampleCount(0);
+  DBG("Siamo dentro");
+  auto file = juce::File(path);
+  formatReader = formatManager.createReaderFor(file);
+  if (formatReader != nullptr) {
+    std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
+        new juce::AudioFormatReaderSource(formatReader, true));
+    transport.setSource(tempSource.get(), 0, nullptr, formatReader->sampleRate);
+    transportStateChanged(Stopped);
+    readerSource.reset(tempSource.release());
+    auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
+    waveform.setSize(2, sampleLenght);
+    formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
+    fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
+    stopFile();
+  }
+}
+
+void AudioPluginAudioProcessor::playFile() {
+  // isPlaying = true;
+  apvts.getParameter(playButtonParamID.getParamID())
+      ->setValueNotifyingHost(1.0f);
+  transportStateChanged(Starting);
+  params.playButton = params.playButtonParam->get();
+}
+
+void AudioPluginAudioProcessor::stopFile() {
+  // isPlaying = false;
+  apvts.getParameter(playButtonParamID.getParamID())
+      ->setValueNotifyingHost(0.0f);
+  transportStateChanged(Stopping);
+  params.playButton = params.playButtonParam->get();
+}
+
+void AudioPluginAudioProcessor::transportStateChanged(TransportState newState) {
+  if (newState != state) {
+    state = newState;
+
+    switch (state) {
+      case Stopped:
+        transport.setPosition(0.0f);
+        break;
+
+      case Playing:
+        break;
+
+      case Starting:
+        transport.start();
+        break;
+
+      case Stopping:
+        transport.stop();
+        // transport.setPosition(0.0f);
+        break;
+    }
+  }
+}
+
+void AudioPluginAudioProcessor::setSampleCount(int newSampleCount) {
+  // Limita il valore di sampleCount alla lunghezza del file audio
+  // auto maxSampleCount = static_cast<long>(readerSource->getTotalLength());
+  // sampleCount = juce::jlimit(0L, maxSampleCount, newSampleCount);
+  sampleCount = newSampleCount;
+
+  // Calcola la nuova posizione in secondi
+  if (readerSource.get() != nullptr) {
+    auto targetPositionInSeconds =
+        static_cast<double>(sampleCount) / fileSampleRate;
+
+    // Applica lo smoothing
+    // newPositionInSeconds += (targetPositionInSeconds - newPositionInSeconds)
+    // * coeff;
+    // Imposta la nuova posizione del trasporto
+    transport.setPosition(targetPositionInSeconds);
+    if (sampleCount == 0 && params.playButton)
+      transport.start();
+  }
+}
+
+void AudioPluginAudioProcessor::process() {
+  // Do something
+}
+
+//==============================================================================
+// This creates new instances of the plugin..
 }  // namespace audio_plugin
 
-// This creates new instances of the plugin.
-// This function definition must be in the global namespace.
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new audio_plugin::AudioPluginAudioProcessor();
 }

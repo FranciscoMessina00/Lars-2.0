@@ -27,8 +27,12 @@ target_sources(${PROJECT_NAME}
     PRIVATE
         source/PluginEditor.cpp
         source/PluginProcessor.cpp
+        source/WaveThumbnail.cpp
+        source/Parameters.cpp
         ${INCLUDE_DIR}/PluginEditor.h
         ${INCLUDE_DIR}/PluginProcessor.h
+        ${INCLUDE_DIR}/WaveThumbnail.h
+        ${INCLUDE_DIR}/Parameters.h
 )
 
 # Sets the include directories of the plugin project.
@@ -78,6 +82,7 @@ target_compile_definitions(${PROJECT_NAME}
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_MODAL_LOOPS_PERMITTED=1
         # JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
 )
 
