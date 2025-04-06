@@ -23,7 +23,7 @@ namespace audio_plugin {
 class WaveThumbnail : public juce::Component,
                       public juce::FileDragAndDropTarget {
 public:
-  WaveThumbnail(AudioPluginAudioProcessor& p);
+  WaveThumbnail(AudioPluginAudioProcessor& p, int section);
   ~WaveThumbnail() override;
 
   void paint(juce::Graphics&) override;
@@ -51,6 +51,9 @@ private:
                                         float y2,
                                         float y3,
                                         float t);
+
+  int section;
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WaveThumbnail)
 };
 }  // namespace audio_plugin

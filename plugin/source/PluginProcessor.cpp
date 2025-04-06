@@ -183,64 +183,114 @@ void AudioPluginAudioProcessor::setStateInformation(const void* data,
   // call.
 }
 
+//void AudioPluginAudioProcessor::loadFile() {
+//  stopFile();
+//  setSampleCount(0);
+//  juce::FileChooser chooser{"Please load a file"};
+//  if (chooser.browseForFileToOpen()) {
+//    auto files = chooser.getResult();
+//    for (const auto& file : files) {
+//      loadedFiles.push_back(file);  // Aggiungi i file al vettore
+//    }
+//    if (!loadedFiles.empty()) {
+//      currentFileIndex = 0;  // Imposta il file corrente al primo file
+//      loadFileAtIndex(currentFileIndex);  // Carica il primo file
+//    }
+//    auto myFile = std::make_unique<juce::File>(file);
+//    fileName = myFile->getFileNameWithoutExtension();
+//    formatReader = formatManager.createReaderFor(file);
+//    if (formatReader != nullptr) {
+//      std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
+//          new juce::AudioFormatReaderSource(formatReader, true));
+//      transport.setSource(tempSource.get(), 0, nullptr,
+//                          formatReader->sampleRate);
+//      transportStateChanged(Stopped);
+//      readerSource.reset(tempSource.release());
+//      auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
+//      waveform.setSize(2, sampleLenght);
+//      formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
+//      fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
+//    }
+//  }
+//}
+
 void AudioPluginAudioProcessor::loadFile() {
-  stopFile();
+  stopFile(1);  // Ferma la sezione superiore
   setSampleCount(0);
-  juce::FileChooser chooser{"Please load a file"};
-  if (chooser.browseForFileToOpen()) {
-    auto file = chooser.getResult();
-    auto myFile = std::make_unique<juce::File>(file);
-    fileName = myFile->getFileNameWithoutExtension();
-    formatReader = formatManager.createReaderFor(file);
-    if (formatReader != nullptr) {
-      std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
-          new juce::AudioFormatReaderSource(formatReader, true));
-      transport.setSource(tempSource.get(), 0, nullptr,
-                          formatReader->sampleRate);
-      transportStateChanged(Stopped);
-      readerSource.reset(tempSource.release());
-      auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
-      waveform.setSize(2, sampleLenght);
-      formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
-      fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
+
+  juce::FileChooser chooser{"Please load files", juce::File(),
+                            "*.wav;*.aiff;*.mp3;*.flac"};
+  if (chooser.browseForMultipleFilesToOpen()) {
+    auto files = chooser.getResults();
+    for (const auto& file : files) {
+      loadedFiles.push_back(file);  // Aggiungi i file al vettore
+    }
+
+    if (!loadedFiles.empty()) {
+      currentFileIndex = 0;  // Imposta il file corrente al primo file
+      loadFileAtIndex(currentFileIndex,
+                      1);  // Carica il primo file nella sezione superiore
     }
   }
 }
 
+
+
 void AudioPluginAudioProcessor::loadFile(const juce::String& path) {
-  stopFile();
+  stopFile(1);  // Ferma la sezione superiore
   setSampleCount(0);
-  DBG("Siamo dentro");
+
   auto file = juce::File(path);
   formatReader = formatManager.createReaderFor(file);
   if (formatReader != nullptr) {
     std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
         new juce::AudioFormatReaderSource(formatReader, true));
-    transport.setSource(tempSource.get(), 0, nullptr, formatReader->sampleRate);
+
+    transport.setSource(tempSource.get(), 0, nullptr,
+                         formatReader->sampleRate);
     transportStateChanged(Stopped);
     readerSource.reset(tempSource.release());
-    auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
-    waveform.setSize(2, sampleLenght);
-    formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
+
+    auto sampleLength = static_cast<int>(formatReader->lengthInSamples);
+    waveform.setSize(2, sampleLength);
+    formatReader->read(&waveform, 0, sampleLength, 0, true, true);
+
     fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
-    stopFile();
+    stopFile(1);  // Ferma la sezione superiore dopo il caricamento
   }
 }
 
-void AudioPluginAudioProcessor::playFile() {
-  // isPlaying = true;
-  apvts.getParameter(playButtonParamID.getParamID())
-      ->setValueNotifyingHost(1.0f);
-  transportStateChanged(Starting);
-  params.playButton = params.playButtonParam->get();
+
+//void AudioPluginAudioProcessor::playFile() {
+//  // isPlaying = true;
+//  apvts.getParameter(playButtonParamID.getParamID())
+//      ->setValueNotifyingHost(1.0f);
+//  transportStateChanged(Starting);
+//  params.playButton = params.playButtonParam->get();
+//}
+//
+//void AudioPluginAudioProcessor::stopFile() {
+//  // isPlaying = false;
+//  apvts.getParameter(playButtonParamID.getParamID())
+//      ->setValueNotifyingHost(0.0f);
+//  transportStateChanged(Stopping);
+//  params.playButton = params.playButtonParam->get();
+//}
+
+void AudioPluginAudioProcessor::playFile(int section) {
+  if (section == 1) {
+    transport.start();
+  } else if (section == 2) {
+    transport2.start();
+  }
 }
 
-void AudioPluginAudioProcessor::stopFile() {
-  // isPlaying = false;
-  apvts.getParameter(playButtonParamID.getParamID())
-      ->setValueNotifyingHost(0.0f);
-  transportStateChanged(Stopping);
-  params.playButton = params.playButtonParam->get();
+void AudioPluginAudioProcessor::stopFile(int section) {
+  if (section == 1) {
+    transport.stop();
+  } else if (section == 2) {
+    transport2.stop();
+  }
 }
 
 void AudioPluginAudioProcessor::transportStateChanged(TransportState newState) {
@@ -292,8 +342,66 @@ void AudioPluginAudioProcessor::process() {
   // Do something
 }
 
-//==============================================================================
-// This creates new instances of the plugin..
+void AudioPluginAudioProcessor::loadFileAtIndex(int index, int section) {
+  if (index >= 0 && index < loadedFiles.size()) {
+    auto file = loadedFiles[index];
+    auto myFile = std::make_unique<juce::File>(file);
+
+    formatReader = formatManager.createReaderFor(file);
+    if (formatReader != nullptr) {
+      std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
+          new juce::AudioFormatReaderSource(formatReader, true));
+
+      if (section == 1) {  // Sezione superiore
+        transport.setSource(tempSource.get(), 0, nullptr,
+                             formatReader->sampleRate);
+        readerSource.reset(tempSource.release());
+        waveform.setSize(2, formatReader->lengthInSamples);
+        formatReader->read(&waveform, 0, formatReader->lengthInSamples, 0,
+                           true, true);
+        fileName = myFile->getFileNameWithoutExtension();
+      } else if (section == 2) {  // Sezione inferiore
+        transport2.setSource(tempSource.get(), 0, nullptr,
+                             formatReader->sampleRate);
+        readerSource2.reset(tempSource.release());
+        waveform2.setSize(2, formatReader->lengthInSamples);
+        formatReader->read(&waveform2, 0, formatReader->lengthInSamples, 0,
+                           true, true);
+        fileName2 = myFile->getFileNameWithoutExtension();
+      }
+
+      fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
+    }
+  }
+}
+
+
+
+void AudioPluginAudioProcessor::nextFile() {
+  if (!loadedFiles.empty()) {
+    currentFileIndex =
+        (currentFileIndex + 1) % loadedFiles.size();  // Cicla all'inizio
+    loadFileAtIndex(currentFileIndex, 2);
+  }
+}
+
+void AudioPluginAudioProcessor::previousFile() {
+  if (!loadedFiles.empty()) {
+    currentFileIndex = (currentFileIndex - 1 + loadedFiles.size()) %
+                       loadedFiles.size();  // Cicla alla fine
+    loadFileAtIndex(currentFileIndex, 2);
+  }
+}
+
+juce::AudioBuffer<float>& AudioPluginAudioProcessor::getWaveform(int section) {
+  if (section == 1) {
+    return waveform;  // Forma d'onda per la sezione superiore
+  } else if (section == 2) {
+    return waveform2;  // Forma d'onda per la sezione inferiore
+  }
+  return waveform;  // Default
+}
+
 }  // namespace audio_plugin
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {

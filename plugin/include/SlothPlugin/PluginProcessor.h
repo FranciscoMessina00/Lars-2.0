@@ -44,10 +44,10 @@ public:
 
   void loadFile();
   void loadFile(const juce::String& path);
-  void playFile();
-  void stopFile();
+  void playFile(int section);
+  void stopFile(int section);
 
-  juce::AudioBuffer<float>& getWaveform() { return waveform; };
+  juce::AudioBuffer<float>& getWaveform(int section);
   bool isFileLoaded() const { return readerSource != nullptr; };
   bool isPlaying{false};
   bool isStopped{true};
@@ -59,23 +59,38 @@ public:
   std::atomic<int>& getSampleCount() { return sampleCount; };
 
   juce::String fileName = "";
+  juce::String fileName2 = "";
+  
 
   void setSampleCount(int newSampleCount);
   double getFileSampleRate() { return fileSampleRate; };
 
   void process();
 
+  void nextFile();
+  void previousFile();
+
+  void toggleTransport(int activeSection);
+
+  juce::AudioTransportSource transport;
+  juce::AudioTransportSource transport2;
+
 private:
   enum TransportState { Stopped, Starting, Stopping, Playing };
   TransportState state;
-  juce::AudioTransportSource transport;
   juce::AudioFormatManager formatManager;
   juce::AudioFormatReader* formatReader{nullptr};
   std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
+  std::unique_ptr<juce::AudioFormatReaderSource> readerSource2;
   juce::AudioBuffer<float> waveform;
+  juce::AudioBuffer<float> waveform2;
   std::atomic<int> sampleCount = 0;
 
+  std::vector<juce::File> loadedFiles;
+  int currentFileIndex = 0;
+
   void transportStateChanged(TransportState newState);
+  void loadFileAtIndex(int index, int section);
   double fileSampleRate = 44100.0;
   double sampleRateRatio = 1.0;
   double coeff = 0.0;

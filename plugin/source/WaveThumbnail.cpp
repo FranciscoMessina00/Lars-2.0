@@ -13,7 +13,7 @@
 
 //==============================================================================
 namespace audio_plugin {
-WaveThumbnail::WaveThumbnail(AudioPluginAudioProcessor& p) : audioProcessor(p) {
+WaveThumbnail::WaveThumbnail(AudioPluginAudioProcessor& p, int section) : audioProcessor(p), section(section) {
   // In your constructor, you should add any child components, and
   // initialise any special settings that your component needs.
 }
@@ -21,7 +21,7 @@ WaveThumbnail::WaveThumbnail(AudioPluginAudioProcessor& p) : audioProcessor(p) {
 WaveThumbnail::~WaveThumbnail() {}
 
 void WaveThumbnail::paint(juce::Graphics& g) {
-  auto waveform = audioProcessor.getWaveform();
+  auto waveform = audioProcessor.getWaveform(section);
 
   if (waveform.getNumSamples() > 0) {
     juce::Path p, q;
@@ -29,7 +29,7 @@ void WaveThumbnail::paint(juce::Graphics& g) {
     audioPointsR.clear();
 
     float durationInSeconds =
-        static_cast<float>(audioProcessor.getWaveform().getNumSamples()) /
+        static_cast<float>(audioProcessor.getWaveform(section).getNumSamples()) /
         static_cast<float>(audioProcessor.getFileSampleRate());
     bool withMillis = true;
     if (durationInSeconds > 60)
@@ -118,8 +118,17 @@ void WaveThumbnail::paint(juce::Graphics& g) {
     g.setColour(juce::Colours::white.withAlpha(0.7f));
     g.setFont(11.0f);
 
-    g.drawFittedText(audioProcessor.fileName, textBounds,
-                     juce::Justification::topLeft, 1);
+    if (section == 1) 
+    {
+      g.drawFittedText(audioProcessor.fileName, textBounds,
+                       juce::Justification::topLeft, 1);
+    }
+
+    else 
+    {
+      g.drawFittedText(audioProcessor.fileName2, textBounds,
+                       juce::Justification::topLeft, 1);
+    }
 
     auto playHeadPos =
         mapLinear(static_cast<float>(audioProcessor.getSampleCount()), 0.0f,
@@ -130,7 +139,7 @@ void WaveThumbnail::paint(juce::Graphics& g) {
     g.drawLine(playHeadPos, 0, playHeadPos, getHeight(), 2);
     if (playHeadPos > getWidth()) {
       audioProcessor.setSampleCount(0);
-      audioProcessor.playFile();
+      audioProcessor.playFile(section);
     }
 
     /*DBG(audioProcessor.getSampleCount());
@@ -199,7 +208,7 @@ void WaveThumbnail::setPlayHeadPositionFromMouse(int mouseX) {
   // Calcola il nuovo sampleCount in base alla posizione del mouse
   auto positionRatio = static_cast<float>(mouseX) / getWidth();
   auto newSampleCount = static_cast<long>(
-      positionRatio * audioProcessor.getWaveform().getNumSamples());
+      positionRatio * audioProcessor.getWaveform(section).getNumSamples());
 
   // Imposta il nuovo sampleCount
   audioProcessor.setSampleCount(newSampleCount);

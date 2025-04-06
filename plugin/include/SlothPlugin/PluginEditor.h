@@ -31,6 +31,8 @@ private:
   juce::GroupComponent full, second;
   juce::TextButton loadButton{"L"};
   juce::TextButton divideButton{"D"};
+  juce::TextButton nextButton{"N"};
+  juce::TextButton prevButton{"P"};
 
   AudioPluginAudioProcessor& audioProcessor;
   void updateTransportButtons(bool status);

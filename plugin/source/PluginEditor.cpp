@@ -4,7 +4,7 @@
 namespace audio_plugin {
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     AudioPluginAudioProcessor& p)
-    : AudioProcessorEditor(&p), wave(p), snare(p), audioProcessor(p) {
+    : AudioProcessorEditor(&p), wave(p, 1), snare(p, 2), audioProcessor(p) {
   startTimerHz(30);
 
   playButton.setAlpha(0.3f);
@@ -19,13 +19,27 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   };
 
   // Bottone Play/Stop
+  //playButton.onClick = [&]() {
+  //  if (audioProcessor.params.playButtonParam->get()) {
+  //    audioProcessor.stopFile();  // Se è in riproduzione, ferma
+  //  } else {
+  //    audioProcessor.playFile();  // Se è fermo, avvia la riproduzione
+  //  }
+  //};
+
   playButton.onClick = [&]() {
-    if (audioProcessor.params.playButtonParam->get()) {
-      audioProcessor.stopFile();  // Se è in riproduzione, ferma
-    } else {
-      audioProcessor.playFile();  // Se è fermo, avvia la riproduzione
-    }
+    audioProcessor.toggleTransport(1);  // Attiva/disattiva la sezione superiore
+    updateTransportButtons(audioProcessor.transport.isPlaying());
   };
+
+  playButton2.onClick = [&]() {
+    audioProcessor.toggleTransport(2);  // Attiva/disattiva la sezione inferiore
+    updateTransportButtons(audioProcessor.transport2.isPlaying());
+  };
+
+  nextButton.onClick = [&]() { audioProcessor.nextFile(); };
+  prevButton.onClick = [&]() { audioProcessor.previousFile(); };
+
 
   divideButton.onClick = [&]() { audioProcessor.process(); };
 
@@ -45,6 +59,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   full.addAndMakeVisible(divideButton);
   second.addAndMakeVisible(snare);
   second.addAndMakeVisible(playButton2);
+  second.addAndMakeVisible(nextButton);
+  second.addAndMakeVisible(prevButton);
 
   addAndMakeVisible(full);
   addAndMakeVisible(second);
@@ -77,6 +93,8 @@ void AudioPluginAudioProcessorEditor::resized() {
   playButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
   divideButton.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
   playButton2.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
+  nextButton.setBounds(playButton2.getX() + 25, 5, buttonWidth, buttonHeight);
+  prevButton.setBounds(playButton2.getX() - 25, 5, buttonWidth, buttonHeight);
 }
 
 void AudioPluginAudioProcessorEditor::parameterValueChanged(int, float value) {
@@ -92,6 +110,7 @@ void AudioPluginAudioProcessorEditor::updateTransportButtons(bool status) {
   // DBG("qualcosa è cambiato");
 
   playButton.setEnabled(audioProcessor.isFileLoaded());
+  playButton2.setEnabled(audioProcessor.isFileLoaded());
   divideButton.setEnabled(audioProcessor.isFileLoaded());
 
   if (status) {
@@ -138,9 +157,30 @@ void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
   if (event.eventComponent == &loadButton ||
       event.eventComponent == &playButton ||
       event.eventComponent == &divideButton ||
+      event.eventComponent == &nextButton ||
+      event.eventComponent == &prevButton ||
       event.eventComponent == &playButton2) {
     event.eventComponent->setAlpha(0.3f);
     event.eventComponent->repaint();
   }
 }
+
+void AudioPluginAudioProcessor::toggleTransport(int activeSection) {
+  if (activeSection == 1) {
+    if (params.playButtonParam->get()) {
+      stopFile(1);
+    } else {
+      playFile(1);
+      stopFile(2);  // Ferma la sezione inferiore
+    }
+  } else if (activeSection == 2) {
+    if (params.playButton2Param->get()) {
+      stopFile(2);
+    } else {
+      playFile(2);
+      stopFile(1);  // Ferma la sezione superiore
+    }
+  }
+}
+
 }  // namespace audio_plugin

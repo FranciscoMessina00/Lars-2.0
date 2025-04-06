@@ -20,6 +20,8 @@ static void castParameter(juce::AudioProcessorValueTreeState& apvts,
 
 Parameters::Parameters(juce::AudioProcessorValueTreeState& apvts) {
   castParameter(apvts, playButtonParamID, playButtonParam);
+  castParameter(apvts, playButton2ParamID, playButtonParam2);
+
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
@@ -27,6 +29,8 @@ Parameters::createParameterLayout() {
   juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
   layout.add(std::make_unique<juce::AudioParameterBool>(playButtonParamID,
+                                                        "Play", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>(playButton2ParamID,
                                                         "Play", false));
 
   return layout;
