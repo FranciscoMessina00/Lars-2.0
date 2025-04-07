@@ -1,10 +1,20 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "torch/torch.h"
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <SlothPlugin/Parameters.h>
+#include <torch/torch.h>
+#include <torch/script.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <optional> // C++17
+#include <memory>
+#include <stdexcept>  // For std::runtime_error
+
+using namespace torch::indexing;
 
 //#include <juce_header/JuceHeader.h>
 
@@ -46,6 +56,7 @@ public:
   void loadFile(const juce::String& path);
   void playFile(int section);
   void stopFile(int section);
+  void saveSeparationIntoFile();
 
   juce::AudioBuffer<float>& getWaveform(int section);
   bool isFileLoaded() const { return readerSource != nullptr; };
@@ -66,6 +77,7 @@ public:
   double getFileSampleRate() { return fileSampleRate; };
 
   void process();
+  
 
   void nextFile();
   void previousFile();
@@ -84,6 +96,7 @@ private:
   std::unique_ptr<juce::AudioFormatReaderSource> readerSource2;
   juce::AudioBuffer<float> waveform;
   juce::AudioBuffer<float> waveform2;
+  std::vector<juce::AudioBuffer<float>> separations;
   std::atomic<int> sampleCount = 0;
 
   std::vector<juce::File> loadedFiles;
@@ -91,6 +104,23 @@ private:
 
   void transportStateChanged(TransportState newState);
   void loadFileAtIndex(int index, int section);
+  torch::Tensor audioToTensor(const juce::AudioBuffer<float>& buffer);
+  std::vector<juce::AudioBuffer<float>> tensorToAudio(torch::Tensor tensor);
+  torch::Tensor demix_track(
+      double chunk_size,
+      int num_overlap,
+      int batch_size,
+      const std::optional<std::string>& target_instrument,
+      const std::vector<std::string>& instruments,
+      torch::jit::Module& my_model,
+      torch::Tensor mix,
+      torch::Device device
+  );
+  bool saveAudioBufferToWav(juce::AudioBuffer<float>& bufferToSave,
+                            juce::File& outputFile,
+                            double sampleRate,
+                            unsigned int bitDepth
+  );
   double fileSampleRate = 44100.0;
   double sampleRateRatio = 1.0;
   double coeff = 0.0;

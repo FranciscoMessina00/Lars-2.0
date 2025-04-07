@@ -20,7 +20,7 @@ static void castParameter(juce::AudioProcessorValueTreeState& apvts,
 
 Parameters::Parameters(juce::AudioProcessorValueTreeState& apvts) {
   castParameter(apvts, playButtonParamID, playButtonParam);
-  castParameter(apvts, playButton2ParamID, playButtonParam2);
+  castParameter(apvts, playButton2ParamID, playButton2Param);
 
 }
 
