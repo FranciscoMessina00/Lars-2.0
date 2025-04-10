@@ -13,6 +13,7 @@
 #include <optional> // C++17
 #include <memory>
 #include <stdexcept>  // For std::runtime_error
+#include <SlothPlugin/BufferAudioSource.h>
 
 using namespace torch::indexing;
 
@@ -54,11 +55,18 @@ public:
 
   void loadFile();
   void loadFile(const juce::String& path);
-  void playFile(int section);
-  void stopFile(int section);
+  void playFile();
+  void playFile2();
+  void stopFile();
+  void stopFile2();
   void saveSeparationIntoFile();
 
-  juce::AudioBuffer<float>& getWaveform(int section);
+  juce::AudioBuffer<float>& getWaveform() {
+    return waveform;
+  };
+
+  juce::AudioBuffer<float>& getWaveform2() { return waveform2; };
+  //juce::AudioBuffer<float>& getWaveform(int section);
   bool isFileLoaded() const { return readerSource != nullptr; };
   bool isPlaying{false};
   bool isStopped{true};
@@ -68,21 +76,23 @@ public:
 
   Parameters params;
   std::atomic<int>& getSampleCount() { return sampleCount; };
+  std::atomic<int>& getSampleCount2() { return sampleCount2; };
 
   juce::String fileName = "";
   juce::String fileName2 = "";
   
 
   void setSampleCount(int newSampleCount);
+  void setSampleCount2(int newSampleCount);
   double getFileSampleRate() { return fileSampleRate; };
 
   void process();
   
 
-  void nextFile();
-  void previousFile();
+  //void nextFile();
+  //void previousFile();
 
-  void toggleTransport(int activeSection);
+  //void toggleTransport(int activeSection);
 
   juce::AudioTransportSource transport;
   juce::AudioTransportSource transport2;
@@ -90,6 +100,7 @@ public:
 private:
   enum TransportState { Stopped, Starting, Stopping, Playing };
   TransportState state;
+  TransportState state2;
   juce::AudioFormatManager formatManager;
   juce::AudioFormatReader* formatReader{nullptr};
   std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
@@ -98,12 +109,14 @@ private:
   juce::AudioBuffer<float> waveform2;
   std::vector<juce::AudioBuffer<float>> separations;
   std::atomic<int> sampleCount = 0;
+  std::atomic<int> sampleCount2 = 0;
 
   std::vector<juce::File> loadedFiles;
   int currentFileIndex = 0;
 
   void transportStateChanged(TransportState newState);
-  void loadFileAtIndex(int index, int section);
+  void transportStateChanged2(TransportState newState);
+  //void loadFileAtIndex(int index, int section);
   torch::Tensor audioToTensor(const juce::AudioBuffer<float>& buffer);
   std::vector<juce::AudioBuffer<float>> tensorToAudio(torch::Tensor tensor);
   torch::Tensor demix_track(
@@ -125,6 +138,11 @@ private:
   double sampleRateRatio = 1.0;
   double coeff = 0.0;
   double newPositionInSeconds = 0;
+
+  void loadBuffer(
+      const juce::AudioBuffer<float>& buffer,
+      double sampleRate);
+  std::unique_ptr<BufferAudioSource> bufferReader;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 };

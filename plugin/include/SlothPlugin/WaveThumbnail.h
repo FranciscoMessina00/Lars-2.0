@@ -23,7 +23,10 @@ namespace audio_plugin {
 class WaveThumbnail : public juce::Component,
                       public juce::FileDragAndDropTarget {
 public:
-  WaveThumbnail(AudioPluginAudioProcessor& p, int section);
+  WaveThumbnail(AudioPluginAudioProcessor& p,
+                const juce::AudioBuffer<float>& bufferToDraw,
+                std::atomic<int>& sampleCountRef,
+                double sampleRate);
   ~WaveThumbnail() override;
 
   void paint(juce::Graphics&) override;
@@ -35,6 +38,7 @@ public:
 private:
   std::vector<float> audioPointsL;
   std::vector<float> audioPointsR;
+  std::atomic<int>& sampleCount;
 
   AudioPluginAudioProcessor& audioProcessor;
   float mapLinear(float value,
@@ -52,7 +56,9 @@ private:
                                         float y3,
                                         float t);
 
-  int section;
+  const juce::AudioBuffer<float>& bufferRef;
+  const double fileSampleRate;
+  void drawWaveform(juce::Graphics& g);
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WaveThumbnail)
 };

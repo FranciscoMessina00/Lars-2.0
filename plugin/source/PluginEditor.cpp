@@ -4,13 +4,16 @@
 namespace audio_plugin {
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     AudioPluginAudioProcessor& p)
-    : AudioProcessorEditor(&p), wave(p, 1), snare(p, 2), audioProcessor(p) {
+    : AudioProcessorEditor(&p),
+      wave(p, p.getWaveform(), p.getSampleCount(), p.getFileSampleRate()),
+      snare(p, p.getWaveform2(), p.getSampleCount2(), p.getFileSampleRate()),
+      audioProcessor(p) {
   startTimerHz(30);
 
   playButton.setAlpha(0.3f);
   loadButton.setAlpha(0.3f);
   divideButton.setAlpha(0.3f);
-  playButton2.setAlpha(1.f);
+  playButton2.setAlpha(0.3f);
 
   loadButton.onClick = [&]() {
     audioProcessor.loadFile();
@@ -19,26 +22,34 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   };
 
   // Bottone Play/Stop
-  //playButton.onClick = [&]() {
-  //  if (audioProcessor.params.playButtonParam->get()) {
-  //    audioProcessor.stopFile();  // Se è in riproduzione, ferma
-  //  } else {
-  //    audioProcessor.playFile();  // Se è fermo, avvia la riproduzione
-  //  }
-  //};
-
   playButton.onClick = [&]() {
-    audioProcessor.toggleTransport(1);  // Attiva/disattiva la sezione superiore
-    updateTransportButtons(audioProcessor.transport.isPlaying());
+    if (audioProcessor.params.playButtonParam->get()) {
+      audioProcessor.stopFile();  // Se è in riproduzione, ferma
+    } else {
+      audioProcessor.playFile();  // Se è fermo, avvia la riproduzione
+    }
   };
 
   playButton2.onClick = [&]() {
-    audioProcessor.toggleTransport(2);  // Attiva/disattiva la sezione inferiore
-    updateTransportButtons(audioProcessor.transport2.isPlaying());
+    if (audioProcessor.params.playButton2Param->get()) {
+      audioProcessor.stopFile2();  // Se è in riproduzione, ferma
+    } else {
+      audioProcessor.playFile2();  // Se è fermo, avvia la riproduzione
+    }
   };
 
-  nextButton.onClick = [&]() { audioProcessor.nextFile(); };
-  prevButton.onClick = [&]() { audioProcessor.previousFile(); };
+  //playButton.onClick = [&]() {
+  //  audioProcessor.toggleTransport(1);  // Attiva/disattiva la sezione superiore
+  //  updateTransportButtons(audioProcessor.transport.isPlaying());
+  //};
+
+  //playButton2.onClick = [&]() {
+  //  audioProcessor.toggleTransport(2);  // Attiva/disattiva la sezione inferiore
+  //  updateTransportButtons(audioProcessor.transport2.isPlaying());
+  //};
+
+  //nextButton.onClick = [&]() { audioProcessor.nextFile(); };
+  //prevButton.onClick = [&]() { audioProcessor.previousFile(); };
 
 
   divideButton.onClick = [&]() { audioProcessor.process(); };
@@ -70,11 +81,13 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   setSize(700, 200);
 
   audioProcessor.params.playButtonParam->addListener(this);
+  audioProcessor.params.playButton2Param->addListener(this);
   addMouseListener(this, true);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor() {
   audioProcessor.params.playButtonParam->removeListener(this);
+  audioProcessor.params.playButton2Param->removeListener(this);
   removeMouseListener(this);
   stopTimer();
 }
@@ -110,7 +123,6 @@ void AudioPluginAudioProcessorEditor::updateTransportButtons(bool status) {
   // DBG("qualcosa è cambiato");
 
   playButton.setEnabled(audioProcessor.isFileLoaded());
-  playButton2.setEnabled(audioProcessor.isFileLoaded());
   divideButton.setEnabled(audioProcessor.isFileLoaded());
 
   if (status) {
@@ -123,6 +135,7 @@ void AudioPluginAudioProcessorEditor::updateTransportButtons(bool status) {
                          juce::Colours::green);  // Colore verde per Play
   }
 }
+
 
 void AudioPluginAudioProcessorEditor::timerCallback() {
   repaint();
@@ -165,22 +178,22 @@ void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
   }
 }
 
-void AudioPluginAudioProcessor::toggleTransport(int activeSection) {
-  if (activeSection == 1) {
-    if (params.playButtonParam->get()) {
-      stopFile(1);
-    } else {
-      playFile(1);
-      stopFile(2);  // Ferma la sezione inferiore
-    }
-  } else if (activeSection == 2) {
-    if (params.playButton2Param->get()) {
-      stopFile(2);
-    } else {
-      playFile(2);
-      stopFile(1);  // Ferma la sezione superiore
-    }
-  }
-}
+//void AudioPluginAudioProcessor::toggleTransport(int activeSection) {
+//  if (activeSection == 1) {
+//    if (params.playButtonParam->get()) {
+//      stopFile(1);
+//    } else {
+//      playFile(1);
+//      stopFile(2);  // Ferma la sezione inferiore
+//    }
+//  } else if (activeSection == 2) {
+//    if (params.playButton2Param->get()) {
+//      stopFile(2);
+//    } else {
+//      playFile(2);
+//      stopFile(1);  // Ferma la sezione superiore
+//    }
+//  }
+//}
 
 }  // namespace audio_plugin

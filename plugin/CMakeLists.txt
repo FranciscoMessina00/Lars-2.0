@@ -43,9 +43,11 @@ target_sources(${PROJECT_NAME}
         source/PluginProcessor.cpp
         source/WaveThumbnail.cpp
         source/Parameters.cpp
+        source/BufferAudioSource.cpp
         ${INCLUDE_DIR}/PluginEditor.h
         ${INCLUDE_DIR}/PluginProcessor.h
         ${INCLUDE_DIR}/WaveThumbnail.h
+        ${INCLUDE_DIR}/BufferAudioSource.h
         ${INCLUDE_DIR}/Parameters.h
 )
 
