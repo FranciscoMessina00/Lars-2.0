@@ -144,7 +144,7 @@ void AudioPluginAudioProcessorEditor::timerCallback() {
 void AudioPluginAudioProcessorEditor::mouseDoubleClick(
     const juce::MouseEvent& event) {
   // Ottieni un riferimento al Processor
-  auto* processor = getAudioProcessor();
+  auto* processor = getAudioProcessor(); // Non viene usato... Rimuovere?
 
   // Riporta la traccia all'inizio
   audioProcessor.setSampleCount(0);

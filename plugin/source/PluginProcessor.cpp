@@ -90,7 +90,7 @@ void AudioPluginAudioProcessor::changeProgramName(int index,
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay(double sampleRate,
                                               int samplesPerBlock) {
-  transport.prepareToPlay(samplesPerBlock, sampleRate);
+  transport.prepareToPlay(samplesPerBlock, sampleRate); // Mettere anche l'altro transport
 
   // coeff = 1.0 - std::exp(-1.0 / (0.1 * sampleRate));
 }
@@ -384,8 +384,18 @@ void AudioPluginAudioProcessor::process() {
   torch::jit::script::Module module;
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
-    module = torch::jit::load(
-        "C:/Users/giuli/Desktop/models/mdx23c.pt");
+    // Trova il percorso del plugin VST3 o Standalone
+    juce::File pluginFile =
+        juce::File::getSpecialLocation(juce::File::currentExecutableFile);
+    // Se è un VST3, il file trovato potrebbe essere il .vst3 stesso
+    // Se è Standalone, è l'eseguibile .exe
+    // Vogliamo la cartella che lo contiene
+    juce::File modelFile = pluginFile.getParentDirectory().getChildFile(
+        "mdx23c.pt");  // Nome del file modello
+
+    juce::String modelPath = modelFile.getFullPathName();
+    module = torch::jit::load(modelPath.toStdString());
+
   } catch (const c10::Error& e) {
     juce::Logger::writeToLog("Error loading the model: " +
                              juce::String(e.what()));

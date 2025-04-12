@@ -51,6 +51,12 @@ target_sources(${PROJECT_NAME}
         ${INCLUDE_DIR}/Parameters.h
 )
 
+# juce_add_binary_data(${PROJECT_NAME}_data
+#     SOURCES
+#     #   You can add more files here if needed, e.g.:
+#     #   assets/background.png NAMESPACE GuiAssets
+# )
+
 # --- Include Directories ---
 target_include_directories(${PROJECT_NAME}
     PUBLIC
@@ -87,6 +93,7 @@ target_link_libraries(${PROJECT_NAME}
         # ${TORCH_LIBRARIES}
         # Or the simple name if that's how find_package defines it:
         torch
+        # ${PROJECT_NAME}_data
 )
 
 # --- Compile Definitions ---
@@ -149,6 +156,24 @@ if (MSVC) # Using simplified condition for testing
             COMMENT "Copying LibTorch DLLs to final VST3 dir (${VST3_DLL_DIR}) after VST3 build"
             VERBATIM
         )
+
+        set(MODEL_SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../models/mdx23c.pt") # Percorso sorgente
+        set(MODEL_DEST_DIR "$<TARGET_FILE_DIR:${VST3_TARGET_NAME}>")
+        if(EXISTS "${MODEL_SOURCE_PATH}")
+            message(STATUS "Setting up model copy: ${MODEL_SOURCE_PATH} -> ${MODEL_DEST_DIR}")
+            # Copia il modello accanto al file VST3
+            add_custom_command(
+                TARGET ${VST3_TARGET_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${MODEL_SOURCE_PATH}"
+                    "${MODEL_DEST_DIR}/mdx23c.pt" # Copia nella stessa dir del VST3
+                COMMENT "Copying model file to VST3 output directory"
+                VERBATIM
+            )
+            # Potresti dover fare lo stesso per il target Standalone se lo usi
+        else()
+            message(WARNING "Model file not found for copying: ${MODEL_SOURCE_PATH}")
+        endif()
     endif()
 # else() block could go here if using the TARGET check
 #    if(MSVC)

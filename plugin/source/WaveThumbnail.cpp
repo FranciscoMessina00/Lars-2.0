@@ -190,7 +190,7 @@ void WaveThumbnail::resized() {
 }
 
 bool WaveThumbnail::isInterestedInFileDrag(const juce::StringArray& files) {
-  for (auto file : files) {
+  for (auto file : files) { // Ciclo for evitabile? Lo fa fuori
     if (file.contains(".wav") || file.contains(".mp3") ||
         file.contains(".aif") || file.contains(".flac"))
       return true;
