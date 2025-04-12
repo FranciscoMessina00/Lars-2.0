@@ -6,7 +6,7 @@ xcode-build/
 release-build/
 out/
 vs-build/
-slothPlugin.filtergraph/
+slothPlugin.filtergraph
 models/
 
 # Prerequisites
