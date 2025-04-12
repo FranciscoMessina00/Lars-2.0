@@ -7,7 +7,7 @@ release-build/
 out/
 vs-build/
 slothPlugin.filtergraph
-models/
+# models/
 
 # Prerequisites
 *.d
