@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+models/mdx23c.pt filter=lfs diff=lfs merge=lfs -text
+models/*.pt filter=lfs diff=lfs merge=lfs -text
