@@ -2,6 +2,7 @@
 #include "SlothPlugin/PluginEditor.h"
 #include "SlothPlugin/Parameters.h"
 
+
 namespace audio_plugin {
 /*
   ==============================================================================
@@ -27,7 +28,11 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 #endif
 {
   formatManager.registerBasicFormats();
+  state2 = Stopped;
   state = Stopped;
+  
+  setupLibTorch();
+
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {
@@ -378,6 +383,7 @@ void AudioPluginAudioProcessor::setSampleCount2(int newSampleCount) {
 }
 
 void AudioPluginAudioProcessor::process() {
+  
   separations.clear();  // Clear the separations vector
   torch::Tensor audioTensor = audioToTensor(waveform);
 
@@ -871,6 +877,34 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
   }
 }
 
+void AudioPluginAudioProcessor::setupLibTorch() {
+  // Ottieni la directory del plugin
+  juce::File pluginFile =
+      juce::File::getSpecialLocation(juce::File::currentExecutableFile);
+  juce::File pluginDir = pluginFile.getParentDirectory();
+  juce::String libTorchDllPath = pluginDir.getFullPathName();
+
+  // Converti il percorso in formato wide string richiesto da SetDllDirectoryW
+  const wchar_t* pathW = libTorchDllPath.toWideCharPointer();
+
+  // Imposta la directory di ricerca DLL per questo processo
+  // Windows cercherà in questa directory *prima* delle directory standard
+  if (SetDllDirectoryW(pathW)) {
+    juce::Logger::writeToLog(
+        "Impostata directory di ricerca DLL per LibTorch: " + libTorchDllPath);
+  } else {
+    // Ottieni l'errore di Windows
+    DWORD error = GetLastError();
+    juce::String errorMessage =
+        juce::String(
+            "Errore nell'impostare la directory di ricerca DLL (Codice: ") +
+        juce::String(error) + ")";
+    juce::Logger::writeToLog(errorMessage);
+    // Potresti voler gestire questo errore in modo più robusto
+  }
+}
+
+
 //void AudioPluginAudioProcessor::loadFileAtIndex(int index, int section) {
 //  if (index >= 0 && index < loadedFiles.size()) {
 //    auto file = loadedFiles[index];
@@ -936,3 +970,5 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new audio_plugin::AudioPluginAudioProcessor();
 }
+
+

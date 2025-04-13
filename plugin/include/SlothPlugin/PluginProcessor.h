@@ -1,11 +1,10 @@
 #pragma once
 
+#include <Windows.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <SlothPlugin/Parameters.h>
-#include <torch/torch.h>
-#include <torch/script.h>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -14,6 +13,8 @@
 #include <memory>
 #include <stdexcept>  // For std::runtime_error
 #include <SlothPlugin/BufferAudioSource.h>
+#include <torch/torch.h>
+#include <torch/script.h>
 
 using namespace torch::indexing;
 
@@ -97,6 +98,8 @@ public:
   juce::AudioTransportSource transport;
   juce::AudioTransportSource transport2;
 
+  
+
 private:
   enum TransportState { Stopped, Starting, Stopping, Playing };
   TransportState state;
@@ -143,6 +146,8 @@ private:
       const juce::AudioBuffer<float>& buffer,
       double sampleRate);
   std::unique_ptr<BufferAudioSource> bufferReader;
+
+  void setupLibTorch();
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 };

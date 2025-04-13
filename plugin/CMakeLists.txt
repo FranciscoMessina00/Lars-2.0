@@ -96,6 +96,26 @@ target_link_libraries(${PROJECT_NAME}
         # ${PROJECT_NAME}_data
 )
 
+# --- Add Delay-Load Linker Options (Windows/MSVC Only) ---
+# Tell the linker to delay loading these specific LibTorch DLLs
+if (MSVC) # Apply only for Visual Studio builds
+    target_link_options(${PROJECT_NAME}
+        PRIVATE # Apply options only when linking this target
+            # List the DLLs you want to delay load
+            # Start with the core/problematic ones:
+            "/DELAYLOAD:c10.dll"
+            "/DELAYLOAD:torch.dll"
+            "/DELAYLOAD:torch_cpu.dll"
+            "/DELAYLOAD:libiomp5md.dll"
+            "/DELAYLOAD:uv.dll"
+            "/DELAYLOAD:torch_global_deps.dll"
+            "/DELAYLOAD:libiompstubs5md.dll"
+            "/DELAYLOAD:fbgemm.dll"
+            "/DELAYLOAD:asmjit.dll"
+            # Add others like fbgemm.dll, asmjit.dll if needed later
+    )
+endif()
+
 # --- Compile Definitions ---
 target_compile_definitions(${PROJECT_NAME}
     PUBLIC
