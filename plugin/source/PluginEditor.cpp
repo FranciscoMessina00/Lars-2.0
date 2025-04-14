@@ -14,6 +14,10 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   loadButton.setAlpha(0.3f);
   divideButton.setAlpha(0.3f);
   playButton2.setAlpha(0.3f);
+  for (int i = 0; i < tracks.size(); i++)
+  {
+    tracks[i].setAlpha(0.3f);
+  }
 
   loadButton.onClick = [&]() {
     audioProcessor.loadFile();
@@ -48,9 +52,6 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   //  updateTransportButtons(audioProcessor.transport2.isPlaying());
   //};
 
-  //nextButton.onClick = [&]() { audioProcessor.nextFile(); };
-  //prevButton.onClick = [&]() { audioProcessor.previousFile(); };
-
 
   divideButton.onClick = [&]() { audioProcessor.process(); };
 
@@ -70,8 +71,9 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   full.addAndMakeVisible(divideButton);
   second.addAndMakeVisible(snare);
   second.addAndMakeVisible(playButton2);
-  second.addAndMakeVisible(nextButton);
-  second.addAndMakeVisible(prevButton);
+  for (int i = 0; i < tracks.size(); i++) {
+    second.addAndMakeVisible(tracks[i]);
+  }
 
   addAndMakeVisible(full);
   addAndMakeVisible(second);
@@ -106,8 +108,11 @@ void AudioPluginAudioProcessorEditor::resized() {
   playButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
   divideButton.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
   playButton2.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
-  nextButton.setBounds(playButton2.getX() + 25, 5, buttonWidth, buttonHeight);
-  prevButton.setBounds(playButton2.getX() - 25, 5, buttonWidth, buttonHeight);
+  tracks[tracks.size() - 1].setBounds(getWidth() - buttonWidth - 15, 5, buttonWidth, buttonHeight);
+  for (int i = tracks.size() - 2; i >= 0; i--) {
+    tracks[i].setBounds(tracks[i + 1].getX() - buttonWidth - 5, 5, buttonWidth,
+                                        buttonHeight);
+  }
 }
 
 void AudioPluginAudioProcessorEditor::parameterValueChanged(int, float value) {
@@ -153,30 +158,79 @@ void AudioPluginAudioProcessorEditor::mouseDoubleClick(
   repaint();
 }
 
-void AudioPluginAudioProcessorEditor::mouseEnter(
-    const juce::MouseEvent& event) {
-  // Se il mouse è sopra un bottone, rendilo opaco
-  if (event.eventComponent == &loadButton ||
-      event.eventComponent == &playButton ||
-      event.eventComponent == &divideButton ||
-      event.eventComponent == &playButton2) {
-    event.eventComponent->setAlpha(1.0f);
-    event.eventComponent->repaint();
-  }
+void AudioPluginAudioProcessorEditor::mouseEnter(const juce::MouseEvent& event) {
+    // Se il mouse è sopra un bottone, rendilo opaco
+    if (event.eventComponent == &loadButton ||
+        event.eventComponent == &playButton ||
+        event.eventComponent == &divideButton ||
+        event.eventComponent == &playButton2) 
+    {
+        event.eventComponent->setAlpha(1.0f);
+        event.eventComponent->repaint();
+    }
+    else 
+    {
+        // Controlla se è uno dei pulsanti delle tracce
+        for (auto& button : tracks) 
+        {
+            if (event.eventComponent == &button) 
+            {
+                button.setAlpha(1.0f);
+                button.repaint();
+                break;
+            }
+        }
+    }
 }
 
 void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
-  // Se il mouse esce da un bottone, rendilo trasparente
-  if (event.eventComponent == &loadButton ||
-      event.eventComponent == &playButton ||
-      event.eventComponent == &divideButton ||
-      event.eventComponent == &nextButton ||
-      event.eventComponent == &prevButton ||
-      event.eventComponent == &playButton2) {
-    event.eventComponent->setAlpha(0.3f);
-    event.eventComponent->repaint();
-  }
+    // Se il mouse esce da un bottone, rendilo trasparente
+    if (event.eventComponent == &loadButton ||
+        event.eventComponent == &playButton ||
+        event.eventComponent == &divideButton ||
+        event.eventComponent == &playButton2) 
+    {
+        event.eventComponent->setAlpha(0.3f);
+        event.eventComponent->repaint();
+    }
+    else 
+    {
+        // Controlla se è uno dei pulsanti delle tracce
+        for (auto& button : tracks) 
+        {
+            if (event.eventComponent == &button) 
+            {
+                button.setAlpha(0.3f);
+                button.repaint();
+                break;
+            }
+        }
+    }
 }
+
+
+//void AudioPluginAudioProcessorEditor::mouseEnter(
+//    const juce::MouseEvent& event) {
+//  // Se il mouse è sopra un bottone, rendilo opaco
+//  if (event.eventComponent == &loadButton ||
+//      event.eventComponent == &playButton ||
+//      event.eventComponent == &divideButton ||
+//      event.eventComponent == &playButton2) {
+//    event.eventComponent->setAlpha(1.0f);
+//    event.eventComponent->repaint();
+//  }
+//}
+//
+//void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
+//  // Se il mouse esce da un bottone, rendilo trasparente
+//  if (event.eventComponent == &loadButton ||
+//      event.eventComponent == &playButton ||
+//      event.eventComponent == &divideButton ||
+//      event.eventComponent == &playButton2) {
+//    event.eventComponent->setAlpha(0.3f);
+//    event.eventComponent->repaint();
+//  }
+//}
 
 //void AudioPluginAudioProcessor::toggleTransport(int activeSection) {
 //  if (activeSection == 1) {
