@@ -5,8 +5,9 @@ namespace audio_plugin {
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     AudioPluginAudioProcessor& p)
     : AudioProcessorEditor(&p),
-      wave(p, p.getWaveform(), p.getSampleCount(), p.getFileSampleRate()),
-      snare(p, p.getWaveform2(), p.getSampleCount2(), p.getFileSampleRate()),
+      tracks(),
+      wave(p, p.getWaveform(), p.getSampleCount(), p.getFileSampleRate(), p.fileName),
+      snare(p, p.getWaveform2(), p.getSampleCount2(), p.getFileSampleRate(), p.fileName), //Qui andrebbe messo filename2 ma la logica funziona ancora male
       audioProcessor(p) {
   startTimerHz(30);
 
@@ -14,10 +15,6 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   loadButton.setAlpha(0.3f);
   divideButton.setAlpha(0.3f);
   playButton2.setAlpha(0.3f);
-  for (int i = 0; i < tracks.size(); i++)
-  {
-    tracks[i].setAlpha(0.3f);
-  }
 
   loadButton.onClick = [&]() {
     audioProcessor.loadFile();
@@ -42,15 +39,6 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     }
   };
 
-  //playButton.onClick = [&]() {
-  //  audioProcessor.toggleTransport(1);  // Attiva/disattiva la sezione superiore
-  //  updateTransportButtons(audioProcessor.transport.isPlaying());
-  //};
-
-  //playButton2.onClick = [&]() {
-  //  audioProcessor.toggleTransport(2);  // Attiva/disattiva la sezione inferiore
-  //  updateTransportButtons(audioProcessor.transport2.isPlaying());
-  //};
 
 
   divideButton.onClick = [&]() { audioProcessor.process(); };
@@ -71,9 +59,20 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   full.addAndMakeVisible(divideButton);
   second.addAndMakeVisible(snare);
   second.addAndMakeVisible(playButton2);
-  for (int i = 0; i < tracks.size(); i++) {
-    second.addAndMakeVisible(tracks[i]);
+
+  for (int i = 0; i < 6; i++) {
+    tracks.push_back(std::make_unique<juce::TextButton>(juce::String(i + 1)));
+    tracks[i]->onClick = [this, i] {
+      if (i < audioProcessor.getSeparatedTracks().size()) {
+        audioProcessor.loadBuffer(i,
+                                  audioProcessor.getFileSampleRate());
+      }
+    };
+    tracks[i]->setAlpha(0.3f);
+    tracks[i]->setEnabled(true);
+    second.addAndMakeVisible(tracks[i].get());
   }
+  
 
   addAndMakeVisible(full);
   addAndMakeVisible(second);
@@ -108,10 +107,11 @@ void AudioPluginAudioProcessorEditor::resized() {
   playButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
   divideButton.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
   playButton2.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
-  tracks[tracks.size() - 1].setBounds(getWidth() - buttonWidth - 15, 5, buttonWidth, buttonHeight);
-  for (int i = tracks.size() - 2; i >= 0; i--) {
-    tracks[i].setBounds(tracks[i + 1].getX() - buttonWidth - 5, 5, buttonWidth,
-                                        buttonHeight);
+  //tracks[tracks.size() - 1]->setBounds(getWidth() - buttonWidth - 15, 5, buttonWidth, buttonHeight);
+  for (int i = tracks.size() - 1; i >= 0; --i) {
+    tracks[i]->setBounds(
+        getWidth() - 15 - (buttonWidth + 5)* (tracks.size() - i), 5,
+        buttonWidth, buttonHeight);
   }
 }
 
@@ -173,10 +173,10 @@ void AudioPluginAudioProcessorEditor::mouseEnter(const juce::MouseEvent& event) 
         // Controlla se è uno dei pulsanti delle tracce
         for (auto& button : tracks) 
         {
-            if (event.eventComponent == &button) 
+            if (event.eventComponent == button.get()) 
             {
-                button.setAlpha(1.0f);
-                button.repaint();
+                button->setAlpha(1.0f);
+                button->repaint();
                 break;
             }
         }
@@ -198,10 +198,10 @@ void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
         // Controlla se è uno dei pulsanti delle tracce
         for (auto& button : tracks) 
         {
-            if (event.eventComponent == &button) 
+            if (event.eventComponent == button.get()) 
             {
-                button.setAlpha(0.3f);
-                button.repaint();
+                button->setAlpha(0.3f);
+                button->repaint();
                 break;
             }
         }

@@ -234,21 +234,24 @@ void AudioPluginAudioProcessor::loadFile(const juce::String& path) {
 
 
 void AudioPluginAudioProcessor::loadBuffer(
-    const juce::AudioBuffer<float>& buffer,
+    int indx,
     double sampleRate) {
+  waveform2.clear();
   stopFile2();
   setSampleCount2(0);
 
   // Crea bufferReader con il buffer separato
   bufferReader = std::make_unique<BufferAudioSource>(
-      buffer, false);  // false = no loop di default
+      trackBuffers[indx], false);  // false = no loop di default
 
   // Configura il transport
   transport2.setSource(bufferReader.get(), 0, nullptr, sampleRate);
   transportStateChanged2(Stopped);
 
   // Aggiorna la waveform
-  waveform2.makeCopyOf(buffer);
+  waveform2.makeCopyOf(trackBuffers[indx]);
+  //fileName2 = &separationNames[indx];
+
 }
 
 void AudioPluginAudioProcessor::playFile() {
@@ -474,8 +477,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     torch::Tensor tensor)  // Pass by value is often okay for Tensors if you
                            // modify it (like .contiguous())
 {
-  std::vector<juce::AudioBuffer<float>>
-      trackBuffers;  // Initialize empty output
+    // Initialize empty output
 
   // --- 1. Input Validation ---
 
@@ -650,7 +652,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
 
   if (!trackBuffers.empty()) {
     // Carica la prima traccia (es. kick drum) direttamente qui
-    loadBuffer(trackBuffers[3],
+    loadBuffer(0,
                fileSampleRate);  // Usa il sample rate del plugin
   }
 
@@ -857,6 +859,7 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
 
 
 void AudioPluginAudioProcessor::saveSeparationIntoFile() {
+  separationNames.clear();
   juce::File documentsDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
     // --- Direct Call Example ---
   double sampleRate = getSampleRate();  // Get from your processor if applicable
@@ -866,6 +869,7 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
     // Create a unique output file name for each track.
     juce::String fileName = "MyPluginOutput_Track_" + juce::String(i) + ".wav";
     juce::File outputFile = documentsDir.getChildFile(fileName);
+    separationNames.push_back(fileName);
 
     // Attempt to save the current audio buffer into a WAV file.
     if (saveAudioBufferToWav(separations[i], outputFile, sampleRate,

@@ -17,11 +17,12 @@ WaveThumbnail::WaveThumbnail(
     AudioPluginAudioProcessor& p,
     const juce::AudioBuffer<float>& bufferToDraw,  // Fix posizione
     std::atomic<int>& sampleCountRef,
-    double sampleRate)
+    double sampleRate, const juce::String& name)
     : audioProcessor(p),
       bufferRef(bufferToDraw),
       sampleCount(sampleCountRef),
-      fileSampleRate(sampleRate) {
+      fileSampleRate(sampleRate),
+      fileName(name) {
   setInterceptsMouseClicks(true, false);
 }
 
@@ -382,7 +383,7 @@ void WaveThumbnail::drawWaveform(juce::Graphics& g) {
   // 6. Nome file in alto a sinistra
   g.setColour(juce::Colours::white.withAlpha(0.7f));
   g.setFont(11.0f);
-  g.drawFittedText(audioProcessor.fileName, getLocalBounds().reduced(7, 7),
+  g.drawFittedText(fileName, getLocalBounds().reduced(7, 7),
                    juce::Justification::topLeft, 1);
 }
 

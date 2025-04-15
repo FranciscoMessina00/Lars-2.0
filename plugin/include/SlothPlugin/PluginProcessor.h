@@ -80,7 +80,7 @@ public:
   std::atomic<int>& getSampleCount2() { return sampleCount2; };
 
   juce::String fileName = "";
-  juce::String fileName2 = "";
+  juce::String* fileName2 = nullptr;
   
 
   void setSampleCount(int newSampleCount);
@@ -98,7 +98,8 @@ public:
   juce::AudioTransportSource transport;
   juce::AudioTransportSource transport2;
 
-  
+  void loadBuffer(int indx, double sampleRate);
+  std::vector<juce::AudioBuffer<float>>& getSeparatedTracks() { return trackBuffers; };
 
 private:
   enum TransportState { Stopped, Starting, Stopping, Playing };
@@ -142,13 +143,16 @@ private:
   double coeff = 0.0;
   double newPositionInSeconds = 0;
 
-  void loadBuffer(
-      const juce::AudioBuffer<float>& buffer,
-      double sampleRate);
+  
   std::unique_ptr<BufferAudioSource> bufferReader;
 
   void setupLibTorch();
 
+  std::vector<juce::AudioBuffer<float>> trackBuffers;
+  std::vector<juce::String> separationNames;
+
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
+
 };
 }  // namespace audio_plugin
