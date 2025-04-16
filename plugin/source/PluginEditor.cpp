@@ -10,13 +10,15 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
            p.transportOriginal.getWaveform(),
            p.transportOriginal.getSampleCount(),
            p.getFileSampleRate(),
-           p.transportOriginal.fileName),
+           p.transportOriginal.fileName, 
+           p.transportOriginal),
       separation(
           p,
             p.transportSeparation.getWaveform(),
             p.transportSeparation.getSampleCount(),
             p.getFileSampleRate(),
-            p.transportSeparation.fileName),  // Qui andrebbe messo filename2 ma
+            p.transportSeparation.fileName,
+            p.transportSeparation),  // Qui andrebbe messo filename2 ma
                                               // la logica funziona
                           // ancora male
       audioProcessor(p) {
@@ -137,6 +139,11 @@ void AudioPluginAudioProcessorEditor::paint(juce::Graphics& g) {
 void AudioPluginAudioProcessorEditor::resized() {
   full.setBounds(0, 0, getWidth(), getHeight() / 2);
   second.setBounds(0, full.getBottom(), getWidth(), getHeight() / 2);
+  
+  //full.setBounds(area.removeFromTop(area.getHeight() / 2));
+  //second.setBounds(area); 
+  
+  //juce::Logger::writeToLog(second.getBounds().toString());
   original.setBounds(full.getLocalBounds());
   separation.setBounds(second.getLocalBounds());
   loadButton.setBounds(getWidth() / 2 - 25, 5, buttonWidth, buttonHeight);

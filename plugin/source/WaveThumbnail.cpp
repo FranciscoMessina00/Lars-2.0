@@ -17,12 +17,13 @@ WaveThumbnail::WaveThumbnail(
     AudioPluginAudioProcessor& p,
     const juce::AudioBuffer<float>& bufferToDraw,  // Fix posizione
     std::atomic<int>& sampleCountRef,
-    double sampleRate, const juce::String& name)
+    double sampleRate, const juce::String& name, TransportComponent& transportRef)
     : audioProcessor(p),
       bufferRef(bufferToDraw),
       sampleCount(sampleCountRef),
       fileSampleRate(sampleRate),
-      fileName(name) {
+      fileName(name),
+      transport(transportRef) {
   setInterceptsMouseClicks(true, false);
 }
 
@@ -227,15 +228,35 @@ float WaveThumbnail::mapLinear(float value,
 }
 
 void WaveThumbnail::mouseDown(const juce::MouseEvent& event) {
-  // Ottieni la posizione del click in coordinate locali
+  // Verifica che il click sia avvenuto all'interno dei bounds di questo
+  // componente
+  juce::Logger::writeToLog("--- mouseDown ---");
+  juce::Logger::writeToLog("Local bounds: " + getLocalBounds().toString());
+  juce::Logger::writeToLog("Mouse position: " + event.getPosition().toString());
+  juce::Logger::writeToLog("Parent bounds: " +
+                           getParentComponent()->getLocalBounds().toString());
+
+  if (!getLocalBounds().contains(event.getPosition())) {
+    return;
+  }
+
   auto mousePosition = event.getPosition().getX();
+  
   // Imposta la nuova posizione della testina
   setPlayHeadPositionFromMouse(mousePosition);
 }
 
 void WaveThumbnail::mouseDrag(const juce::MouseEvent& event) {
-  // Aggiorna la posizione della testina durante il trascinamento
+  // Verifica che il drag stia avvenendo all'interno dei bounds di questo
+  // componente
+  if (!getLocalBounds().contains(event.getPosition())) {
+    return;
+  }
+
   auto mousePosition = event.getPosition().getX();
+  auto y = event.getPosition().getY();
+
+  // Imposta la nuova posizione della testina
   setPlayHeadPositionFromMouse(mousePosition);
 }
 
@@ -251,7 +272,7 @@ void WaveThumbnail::setPlayHeadPositionFromMouse(int mouseX) {
       positionRatio * audioProcessor.transportOriginal.getWaveform().getNumSamples());
 
   // Imposta il nuovo sampleCount
-  audioProcessor.transportOriginal.setSampleCount(newSampleCount);
+  transport.setSampleCount(newSampleCount);
 
   // Forza il ridisegno del componente
   repaint();

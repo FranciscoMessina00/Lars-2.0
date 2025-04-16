@@ -26,7 +26,7 @@ public:
   WaveThumbnail(AudioPluginAudioProcessor& p,
                 const juce::AudioBuffer<float>& bufferToDraw,
                 std::atomic<int>& sampleCountRef,
-                double sampleRate, const juce::String& name);
+                double sampleRate, const juce::String& name, TransportComponent& transportRef);
   ~WaveThumbnail() override;
 
   void paint(juce::Graphics&) override;
@@ -40,6 +40,7 @@ private:
   std::vector<float> audioPointsR;
   std::atomic<int>& sampleCount;
   const juce::String& fileName;
+  TransportComponent& transport;
 
   AudioPluginAudioProcessor& audioProcessor;
   float mapLinear(float value,
