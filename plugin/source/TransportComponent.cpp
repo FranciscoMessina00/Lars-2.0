@@ -18,7 +18,7 @@ void TransportComponent::setSampleCount(int newSampleCount) {
     // * coeff;
     // Imposta la nuova posizione del trasporto
     transport.setPosition(targetPositionInSeconds);
-    if (sampleCount == 0 && params.playButton)
+    if (sampleCount == 0 && (params.playButton || params.playButton2))
       transport.start();
   }
 }
@@ -52,6 +52,7 @@ void TransportComponent::playFile(juce::ParameterID parameter) {
       ->setValueNotifyingHost(1.0f);
   transportStateChanged(Starting);
   params.playButton = params.playButtonParam->get();
+  params.playButton2 = params.playButton2Param->get();
 }
 
 void TransportComponent::stopFile(juce::ParameterID parameter) {
@@ -59,6 +60,7 @@ void TransportComponent::stopFile(juce::ParameterID parameter) {
       ->setValueNotifyingHost(0.0f);
   transportStateChanged(Stopping);
   params.playButton = params.playButtonParam->get();
+  params.playButton2 = params.playButton2Param->get();
 }
 
 }

@@ -100,6 +100,7 @@ private:
   double sampleRateRatio = 1.0;
   double coeff = 0.0;
   double newPositionInSeconds = 0;
+  std::vector<std::string> instruments;
 
   void setupLibTorch();
 

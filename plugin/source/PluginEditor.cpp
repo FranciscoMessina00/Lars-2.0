@@ -6,12 +6,13 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     AudioPluginAudioProcessor& p)
     : AudioProcessorEditor(&p),
       tracks(),
-      wave(p,
+      original(p,
            p.transportOriginal.getWaveform(),
            p.transportOriginal.getSampleCount(),
            p.getFileSampleRate(),
            p.transportOriginal.fileName),
-      snare(p,
+      separation(
+          p,
             p.transportSeparation.getWaveform(),
             p.transportSeparation.getSampleCount(),
             p.getFileSampleRate(),
@@ -37,9 +38,20 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     if (audioProcessor.params.playButtonParam->get()) {
       audioProcessor.transportOriginal
           .stopFile(playButtonParamID);  // Se è in riproduzione, ferma
+      playButton.setButtonText("P");
+      playButton.setColour(juce::TextButton::buttonColourId,
+                           juce::Colours::green);  // Colore verde per Play
+
     } else {
       audioProcessor.transportOriginal
           .playFile(playButtonParamID);  // Se è fermo, avvia la riproduzione
+      audioProcessor.transportSeparation.stopFile(playButton2ParamID);
+      playButton.setButtonText("S");
+      playButton.setColour(juce::TextButton::buttonColourId,
+                           juce::Colours::red);  // Colore rosso per Stop
+      playButton2.setButtonText("P");
+      playButton2.setColour(juce::TextButton::buttonColourId,
+                           juce::Colours::green);  // Colore verde per Play
     }
   };
 
@@ -47,9 +59,19 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     if (audioProcessor.params.playButton2Param->get()) {
       audioProcessor.transportSeparation.stopFile(
           playButton2ParamID);  // Se è in riproduzione, ferma
+      playButton2.setButtonText("P");
+      playButton2.setColour(juce::TextButton::buttonColourId,
+                           juce::Colours::green);  // Colore verde per Play
     } else {
-      audioProcessor.transportSeparation.stopFile(
-          playButton2ParamID);  // Se è in riproduzione, ferma
+      audioProcessor.transportSeparation.playFile(
+          playButton2ParamID);  // Se è fermo, avvia la riproduzione
+      audioProcessor.transportOriginal.stopFile(playButtonParamID);
+      playButton2.setButtonText("S");
+      playButton2.setColour(juce::TextButton::buttonColourId,
+                           juce::Colours::red);  // Colore rosso per Stop
+      playButton.setButtonText("P");
+      playButton.setColour(juce::TextButton::buttonColourId,
+                            juce::Colours::green);  // Colore verde per Play
     }
   };
 
@@ -65,13 +87,13 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   playButton.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
   playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
   playButton2.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
-  playButton2.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+  playButton2.setEnabled(audioProcessor.transportSeparation.isFileLoaded());
   divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
-  full.addAndMakeVisible(wave);
+  full.addAndMakeVisible(original);
   full.addAndMakeVisible(loadButton);
   full.addAndMakeVisible(playButton);
   full.addAndMakeVisible(divideButton);
-  second.addAndMakeVisible(snare);
+  second.addAndMakeVisible(separation);
   second.addAndMakeVisible(playButton2);
 
   for (int i = 0; i < 6; i++) {
@@ -115,8 +137,8 @@ void AudioPluginAudioProcessorEditor::paint(juce::Graphics& g) {
 void AudioPluginAudioProcessorEditor::resized() {
   full.setBounds(0, 0, getWidth(), getHeight() / 2);
   second.setBounds(0, full.getBottom(), getWidth(), getHeight() / 2);
-  wave.setBounds(full.getLocalBounds());
-  snare.setBounds(second.getLocalBounds());
+  original.setBounds(full.getLocalBounds());
+  separation.setBounds(second.getLocalBounds());
   loadButton.setBounds(getWidth() / 2 - 25, 5, buttonWidth, buttonHeight);
   playButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
   divideButton.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
@@ -130,7 +152,8 @@ void AudioPluginAudioProcessorEditor::resized() {
 }
 
 void AudioPluginAudioProcessorEditor::parameterValueChanged(int, float value) {
-  if (juce::MessageManager::getInstance()->isThisTheMessageThread()) {
+  juce::Logger::writeToLog("Value: " + juce::String(value));
+    if (juce::MessageManager::getInstance()->isThisTheMessageThread()) {
     updateTransportButtons(value != 0.0f);
   } else {
     juce::MessageManager::callAsync(
@@ -143,16 +166,28 @@ void AudioPluginAudioProcessorEditor::updateTransportButtons(bool status) {
 
   playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
   divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+  playButton2.setEnabled(audioProcessor.transportSeparation.isFileLoaded());
 
-  if (status) {
-    playButton.setButtonText("S");
-    playButton.setColour(juce::TextButton::buttonColourId,
-                         juce::Colours::red);  // Colore rosso per Stop
-  } else {
-    playButton.setButtonText("P");
-    playButton.setColour(juce::TextButton::buttonColourId,
-                         juce::Colours::green);  // Colore verde per Play
-  }
+  
+    //if (audioProcessor.params.playButton) {
+    //    playButton.setButtonText("S");
+    //    playButton.setColour(juce::TextButton::buttonColourId,
+    //                        juce::Colours::red);  // Colore rosso per Stop
+    //} else {
+    //  playButton.setButtonText("P");
+    //  playButton.setColour(juce::TextButton::buttonColourId,
+    //                       juce::Colours::green);  // Colore verde per Play
+    //}
+    //if (audioProcessor.params.playButton2) {
+    //    playButton2.setButtonText("S");
+    //    playButton2.setColour(juce::TextButton::buttonColourId,
+    //                        juce::Colours::red);  // Colore rosso per Stop
+    //} else {
+    //    playButton2.setButtonText("P");
+    //    playButton2.setColour(juce::TextButton::buttonColourId,
+    //                        juce::Colours::green);  // Colore verde per Play
+    //}
+  
 }
 
 

@@ -16,6 +16,7 @@ public:
   std::vector<juce::AudioBuffer<float>>& getSeparatedTracks() {
     return trackBuffers;
   };
+  bool isFileLoaded() const override { return bufferReader != nullptr; };
   std::vector<juce::AudioBuffer<float>> separations;
   std::unique_ptr<BufferAudioSource> bufferReader;
   std::vector<juce::AudioBuffer<float>> trackBuffers;

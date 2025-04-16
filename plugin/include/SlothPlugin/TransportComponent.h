@@ -34,7 +34,7 @@ public:
   juce::AudioBuffer<float>& getWaveform() {
     return waveform;
   };
-  bool isFileLoaded() const { return readerSource != nullptr; };
+  virtual bool isFileLoaded() const { return readerSource != nullptr; };
 
   juce::AudioProcessorValueTreeState& apvts;
   Parameters& params;

@@ -98,6 +98,7 @@ void AudioPluginAudioProcessor::changeProgramName(int index,
 void AudioPluginAudioProcessor::prepareToPlay(double sampleRate,
                                               int samplesPerBlock) {
   transportOriginal.transport.prepareToPlay(samplesPerBlock, sampleRate); // Mettere anche l'altro transport
+  transportSeparation.transport.prepareToPlay(samplesPerBlock, sampleRate);
 
   // coeff = 1.0 - std::exp(-1.0 / (0.1 * sampleRate));
 }
@@ -147,16 +148,22 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   double systemSampleRate = getSampleRate();
   sampleRateRatio = fileSampleRate / systemSampleRate;
 
-  for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+  for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i) {
     buffer.clear(i, 0, buffer.getNumSamples());
-
-  if (params.playButton)
-    transportOriginal.sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
-  // sampleCount = params.playButton ? sampleCount +=
-  // static_cast<long>(buffer.getNumSamples() * sampleRateRatio) : 0;
-
+  }
+  
   juce::AudioSourceChannelInfo channelInfo(&buffer, 0, buffer.getNumSamples());
-  transportOriginal.transport.getNextAudioBlock(channelInfo);
+  
+  if (params.playButton) {
+    transportOriginal.sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
+    transportOriginal.transport.getNextAudioBlock(channelInfo);
+  }
+    
+  if (params.playButton2){
+    transportSeparation.sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
+    transportSeparation.transport.getNextAudioBlock(channelInfo);
+  }
+    
 
   /*for (int channel = 0; channel < totalNumInputChannels; ++channel)
   {
@@ -224,8 +231,7 @@ void AudioPluginAudioProcessor::process() {
   // * 2 - 1; Create a 2-channel (stereo) audio tensor
   torch::Tensor output;
   try {
-    std::vector<std::string> instruments = {"kick", "snare", "toms",
-                                            "hh",   "ride",  "crash"};
+    instruments = {"kick", "snare", "toms", "hh",   "ride",  "crash"};
     output = demix_track(130560, 4, 1, std::nullopt, instruments, module,
                               audioTensor, torch::kCPU);
     // If the output is a tensor, convert it and use as needed
@@ -458,13 +464,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
   juce::Logger::writeToLog("Tensor to Audio conversion successful.");
   // DBG("Tensor to Audio conversion successful.");
 
-  if (!transportSeparation.trackBuffers.empty()) {
-    // Carica la prima traccia (es. kick drum) direttamente qui
-    transportSeparation.load(
-        0,
-               fileSampleRate);  // Usa il sample rate del plugin
-  }
-
+  
   return transportSeparation.trackBuffers;
 }
 
@@ -676,9 +676,17 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
 
   for (size_t i = 0; i < transportSeparation.separations.size(); ++i) {
     // Create a unique output file name for each track.
-    juce::String fileName = "MyPluginOutput_Track_" + juce::String(i) + ".wav";
-    juce::File outputFile = documentsDir.getChildFile(fileName);
+    juce::String fileName =
+        transportOriginal.fileName + "_" + instruments[i];
+    juce::File outputFile = documentsDir.getChildFile(fileName + ".wav");
     transportSeparation.separationNames.push_back(fileName);
+
+    if (!transportSeparation.trackBuffers.empty()) {
+      // Carica la prima traccia (es. kick drum) direttamente qui
+      transportSeparation.load(
+          0,
+          fileSampleRate);  // Usa il sample rate del plugin
+    }
 
     // Attempt to save the current audio buffer into a WAV file.
     if (saveAudioBufferToWav(transportSeparation.separations[i], outputFile,

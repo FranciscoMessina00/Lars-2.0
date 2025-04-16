@@ -48,8 +48,8 @@ private:
   void parameterGestureChanged(int, bool) override {}
   void mouseDoubleClick(
       const juce::MouseEvent& event);
-  WaveThumbnail wave;
-  WaveThumbnail snare;
+  WaveThumbnail original;
+  WaveThumbnail separation;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessorEditor)
 };
