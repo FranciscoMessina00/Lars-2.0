@@ -204,8 +204,8 @@ void WaveThumbnail::filesDropped(const juce::StringArray& files, int x, int y) {
   for (auto file : files) {
     if (isInterestedInFileDrag(file)) {
       auto myFile = std::make_unique<juce::File>(file);
-      audioProcessor.fileName = myFile->getFileNameWithoutExtension();
-      audioProcessor.loadFile(file);
+      audioProcessor.transportOriginal.fileName = myFile->getFileNameWithoutExtension();
+      audioProcessor.transportOriginal.load(file);
     }
   }
   repaint();
@@ -248,10 +248,10 @@ void WaveThumbnail::setPlayHeadPositionFromMouse(int mouseX) {
   /*auto newSampleCount = static_cast<long>(
       positionRatio * audioProcessor.getWaveform(section).getNumSamples());*/
   auto newSampleCount = static_cast<long>(
-      positionRatio * audioProcessor.getWaveform().getNumSamples());
+      positionRatio * audioProcessor.transportOriginal.getWaveform().getNumSamples());
 
   // Imposta il nuovo sampleCount
-  audioProcessor.setSampleCount(newSampleCount);
+  audioProcessor.transportOriginal.setSampleCount(newSampleCount);
 
   // Forza il ridisegno del componente
   repaint();

@@ -44,11 +44,17 @@ target_sources(${PROJECT_NAME}
         source/WaveThumbnail.cpp
         source/Parameters.cpp
         source/BufferAudioSource.cpp
+        source/TransportComponent.cpp
+        source/TransportOriginal.cpp
+        source/TransportSeparation.cpp
         ${INCLUDE_DIR}/PluginEditor.h
         ${INCLUDE_DIR}/PluginProcessor.h
         ${INCLUDE_DIR}/WaveThumbnail.h
         ${INCLUDE_DIR}/BufferAudioSource.h
         ${INCLUDE_DIR}/Parameters.h
+        ${INCLUDE_DIR}/TransportComponent.h
+        ${INCLUDE_DIR}/TransportOriginal.h
+        ${INCLUDE_DIR}/TransportSeparation.h
 )
 
 # juce_add_binary_data(${PROJECT_NAME}_data

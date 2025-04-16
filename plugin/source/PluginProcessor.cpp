@@ -24,19 +24,21 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
               .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
               ),
-      params(apvts)
+      params(apvts),
+      transportOriginal(apvts, params),
+      transportSeparation(apvts, params)
 #endif
 {
-  formatManager.registerBasicFormats();
-  state2 = Stopped;
-  state = Stopped;
+  transportOriginal.formatManager.registerBasicFormats();
+  transportSeparation.state = TransportComponent::TransportState::Stopped;
+  transportOriginal.state = TransportComponent::TransportState::Stopped;
   
   setupLibTorch();
 
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {
-  formatReader = nullptr;
+  transportOriginal.formatReader = nullptr;
 }
 
 //==============================================================================
@@ -95,7 +97,7 @@ void AudioPluginAudioProcessor::changeProgramName(int index,
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay(double sampleRate,
                                               int samplesPerBlock) {
-  transport.prepareToPlay(samplesPerBlock, sampleRate); // Mettere anche l'altro transport
+  transportOriginal.transport.prepareToPlay(samplesPerBlock, sampleRate); // Mettere anche l'altro transport
 
   // coeff = 1.0 - std::exp(-1.0 / (0.1 * sampleRate));
 }
@@ -137,7 +139,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   auto totalNumInputChannels = getTotalNumInputChannels();
   auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-  if (readerSource.get() == nullptr) {
+  if (transportOriginal.readerSource.get() == nullptr) {
     buffer.clear();
     return;
   }
@@ -149,12 +151,12 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     buffer.clear(i, 0, buffer.getNumSamples());
 
   if (params.playButton)
-    sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
+    transportOriginal.sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
   // sampleCount = params.playButton ? sampleCount +=
   // static_cast<long>(buffer.getNumSamples() * sampleRateRatio) : 0;
 
   juce::AudioSourceChannelInfo channelInfo(&buffer, 0, buffer.getNumSamples());
-  transport.getNextAudioBlock(channelInfo);
+  transportOriginal.transport.getNextAudioBlock(channelInfo);
 
   /*for (int channel = 0; channel < totalNumInputChannels; ++channel)
   {
@@ -188,207 +190,10 @@ void AudioPluginAudioProcessor::setStateInformation(const void* data,
   // call.
 }
 
-void AudioPluginAudioProcessor::loadFile() {
-  stopFile();
-  setSampleCount(0);
-  juce::FileChooser chooser{"Please load a file"};
-  if (chooser.browseForFileToOpen()) {
-    auto file = chooser.getResult();
-    auto myFile = std::make_unique<juce::File>(file);
-    fileName = myFile->getFileNameWithoutExtension();
-    formatReader = formatManager.createReaderFor(file);
-    if (formatReader != nullptr) {
-      std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
-          new juce::AudioFormatReaderSource(formatReader, true));
-      transport.setSource(tempSource.get(), 0, nullptr,
-                          formatReader->sampleRate);
-      transportStateChanged(Stopped);
-      readerSource.reset(tempSource.release());
-      auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
-      waveform.setSize(2, sampleLenght);
-      formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
-      fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
-    }
-  }
-}
-
-void AudioPluginAudioProcessor::loadFile(const juce::String& path) {
-  stopFile();
-  setSampleCount(0);
-  DBG("Siamo dentro");
-  auto file = juce::File(path);
-  formatReader = formatManager.createReaderFor(file);
-  if (formatReader != nullptr) {
-    std::unique_ptr<juce::AudioFormatReaderSource> tempSource(
-        new juce::AudioFormatReaderSource(formatReader, true));
-    transport.setSource(tempSource.get(), 0, nullptr, formatReader->sampleRate);
-    transportStateChanged(Stopped);
-    readerSource.reset(tempSource.release());
-    auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
-    waveform.setSize(2, sampleLenght);
-    formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
-    fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
-    stopFile();
-  }
-}
-
-
-void AudioPluginAudioProcessor::loadBuffer(
-    int indx,
-    double sampleRate) {
-  waveform2.clear();
-  stopFile2();
-  setSampleCount2(0);
-
-  // Crea bufferReader con il buffer separato
-  bufferReader = std::make_unique<BufferAudioSource>(
-      trackBuffers[indx], false);  // false = no loop di default
-
-  // Configura il transport
-  transport2.setSource(bufferReader.get(), 0, nullptr, sampleRate);
-  transportStateChanged2(Stopped);
-
-  // Aggiorna la waveform
-  waveform2.makeCopyOf(trackBuffers[indx]);
-  //fileName2 = &separationNames[indx];
-
-}
-
-void AudioPluginAudioProcessor::playFile() {
-  // isPlaying = true;
-  apvts.getParameter(playButtonParamID.getParamID())
-      ->setValueNotifyingHost(1.0f);
-  transportStateChanged(Starting);
-  params.playButton = params.playButtonParam->get();
-}
-
-void AudioPluginAudioProcessor::playFile2() {
-  // isPlaying = true;
-  apvts.getParameter(playButton2ParamID.getParamID())
-      ->setValueNotifyingHost(1.0f);
-  transportStateChanged2(Starting);
-  params.playButton2 = params.playButton2Param->get();
-}
-
-void AudioPluginAudioProcessor::stopFile() {
-  // isPlaying = false;
-  apvts.getParameter(playButtonParamID.getParamID())
-      ->setValueNotifyingHost(0.0f);
-  transportStateChanged(Stopping);
-  params.playButton = params.playButtonParam->get();
-}
-
-void AudioPluginAudioProcessor::stopFile2() {
-  // isPlaying = false;
-  apvts.getParameter(playButton2ParamID.getParamID())
-      ->setValueNotifyingHost(0.0f);
-  transportStateChanged2(Stopping);
-  params.playButton2 = params.playButton2Param->get();
-}
-
-//void AudioPluginAudioProcessor::playFile(int section) {
-//  if (section == 1) {
-//    transport.start();
-//  } else if (section == 2) {
-//    transport2.start();
-//  }
-//}
-//
-//void AudioPluginAudioProcessor::stopFile(int section) {
-//  if (section == 1) {
-//    transport.stop();
-//  } else if (section == 2) {
-//    transport2.stop();
-//  }
-//}
-
-void AudioPluginAudioProcessor::transportStateChanged(TransportState newState) {
-  if (newState != state) {
-    state = newState;
-
-    switch (state) {
-      case Stopped:
-        transport.setPosition(0.0f);
-        break;
-
-      case Playing:
-        break;
-
-      case Starting:
-        transport.start();
-        break;
-
-      case Stopping:
-        transport.stop();
-        // transport.setPosition(0.0f);
-        break;
-    }
-  }
-}
-
-void AudioPluginAudioProcessor::transportStateChanged2(TransportState newState) {
-  if (newState != state2) {
-    state2 = newState;
-
-    switch (state2) {
-      case Stopped:
-        transport2.setPosition(0.0f);
-        break;
-
-      case Playing:
-        break;
-
-      case Starting:
-        transport2.start();
-        break;
-
-      case Stopping:
-        transport2.stop();
-        // transport.setPosition(0.0f);
-        break;
-    }
-  }
-}
-
-void AudioPluginAudioProcessor::setSampleCount(int newSampleCount) {
-  // Limita il valore di sampleCount alla lunghezza del file audio
-  // auto maxSampleCount = static_cast<long>(readerSource->getTotalLength());
-  // sampleCount = juce::jlimit(0L, maxSampleCount, newSampleCount);
-  sampleCount = newSampleCount;
-
-  // Calcola la nuova posizione in secondi
-  if (readerSource.get() != nullptr) {
-    auto targetPositionInSeconds =
-        static_cast<double>(sampleCount) / fileSampleRate;
-
-    // Applica lo smoothing
-    // newPositionInSeconds += (targetPositionInSeconds - newPositionInSeconds)
-    // * coeff;
-    // Imposta la nuova posizione del trasporto
-    transport.setPosition(targetPositionInSeconds);
-    if (sampleCount == 0 && params.playButton)
-      transport.start();
-  }
-}
-
-void AudioPluginAudioProcessor::setSampleCount2(int newSampleCount) {
-  sampleCount = newSampleCount;
-
-  // Calcola la nuova posizione in secondi
-  if (readerSource2.get() != nullptr) {
-    auto targetPositionInSeconds =
-        static_cast<double>(sampleCount2) / fileSampleRate;
-    
-    transport2.setPosition(targetPositionInSeconds);
-    if (sampleCount2 == 0 && params.playButton2)
-      transport2.start();
-  }
-}
-
 void AudioPluginAudioProcessor::process() {
   
-  separations.clear();  // Clear the separations vector
-  torch::Tensor audioTensor = audioToTensor(waveform);
+  transportSeparation.separations.clear();  // Clear the separations vector
+  torch::Tensor audioTensor = audioToTensor(transportOriginal.waveform);
 
   torch::jit::script::Module module;
   try {
@@ -410,7 +215,7 @@ void AudioPluginAudioProcessor::process() {
                              juce::String(e.what()));
   }
 
-  std::cout << "ok\n";
+  juce::Logger::writeToLog("ok\n");
 
   int num_samples = audioTensor.size(1);  // Get the number of samples
 
@@ -443,7 +248,8 @@ void AudioPluginAudioProcessor::process() {
     std::cerr << e.what();
   }
 
-  separations = tensorToAudio(output);  // Converti il tensore in AudioBuffer
+  transportSeparation.separations =
+      tensorToAudio(output);  // Converti il tensore in AudioBuffer
   juce::Logger::writeToLog("Converted to AudioBuffer");
   saveSeparationIntoFile();        // Salva il risultato in un file WAV
 }
@@ -487,7 +293,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         "Error: tensorToAudio received an undefined tensor.");
     // DBG("Error: tensorToAudio received an undefined tensor.");
 
-    return trackBuffers;  // Return empty vector
+    return transportSeparation.trackBuffers;  // Return empty vector
   }
 
   // Check if tensor is on CPU, move if necessary
@@ -503,7 +309,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
       juce::Logger::writeToLog("Error moving tensor to CPU: " +
                                juce::String(e.what()));
       // DBG("Error moving tensor to CPU: " + juce::String(e.what()));
-      return trackBuffers;  // Cannot proceed
+      return transportSeparation.trackBuffers;  // Cannot proceed
     }
   }
 
@@ -517,7 +323,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     // Optionally, you could try converting it: tensor =
     // tensor.to(torch::kFloat); But it's often better to enforce the correct
     // type upstream.
-    return trackBuffers;
+    return transportSeparation.trackBuffers;
   }
 
   // Check dimensions - MUST be 3D
@@ -534,7 +340,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         "NchannelsPerTrack, NumSamples]). Actual shape: " +
         juce::String(ss.str()));
     // DBG(...); // Debug version
-    return trackBuffers;
+    return transportSeparation.trackBuffers;
   }
 
   // --- 2. Ensure Contiguity ---
@@ -551,7 +357,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     juce::Logger::writeToLog("Error making tensor contiguous: " +
                              juce::String(e.what()));
     // DBG("Error making tensor contiguous: " + juce::String(e.what()));
-    return trackBuffers;
+    return transportSeparation.trackBuffers;
   }
 
   // --- 3. Get Dimensions (Safer now after checks) ---
@@ -564,7 +370,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     juce::Logger::writeToLog(
         "Error: Tensor dimensions are negative. This should not happen.");
     // DBG("Error: Tensor dimensions are negative.");
-    return trackBuffers;
+    return transportSeparation.trackBuffers;
   }
   // Handle case where there's nothing to process
   if (numTracks == 0 || channelsPerTrack == 0) {
@@ -572,7 +378,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         "Info: Tensor has 0 tracks or 0 channels per track. Returning empty "
         "buffer list.");
     // DBG("Info: Tensor has 0 tracks or 0 channels per track.");
-    return trackBuffers;  // Nothing to copy
+    return transportSeparation.trackBuffers;  // Nothing to copy
   }
 
   juce::Logger::writeToLog(
@@ -581,7 +387,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
   // DBG(...);
 
   // Reserve space in the output vector
-  trackBuffers.reserve(numTracks);
+  transportSeparation.trackBuffers.reserve(numTracks);
 
   // --- 4. Data Copy Loop (with error handling) ---
   try {
@@ -593,7 +399,8 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
 
       // Skip copy loop if there are no samples (saves unnecessary work)
       if (numSamples == 0) {
-        trackBuffers.push_back(std::move(buffer));  // Add empty buffer
+        transportSeparation.trackBuffers.push_back(
+            std::move(buffer));  // Add empty buffer
         continue;                                   // Go to next track
       }
 
@@ -628,35 +435,37 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         std::memcpy(dest, src, numSamples * sizeof(float));
       }
       // Move the filled buffer into the vector
-      trackBuffers.push_back(std::move(buffer));
+      transportSeparation.trackBuffers.push_back(std::move(buffer));
     }
   } catch (const c10::Error& e) {  // Catch LibTorch specific errors during loop
     juce::Logger::writeToLog(
         "LibTorch Error during tensor data copying loop: " +
         juce::String(e.what()));
     // DBG(...);
-    trackBuffers.clear();  // Ensure partial results are not returned
-    return trackBuffers;   // Return empty on error
+    transportSeparation.trackBuffers
+        .clear();         // Ensure partial results are not returned
+    return transportSeparation.trackBuffers;  // Return empty on error
   } catch (const std::exception& e) {  // Catch other potential errors (like the
                                        // runtime_error above)
     juce::Logger::writeToLog(
         "Standard Exception during tensor data copying loop: " +
         juce::String(e.what()));
     // DBG(...);
-    trackBuffers.clear();
-    return trackBuffers;  // Return empty on error
+    transportSeparation.trackBuffers.clear();
+    return transportSeparation.trackBuffers;  // Return empty on error
   }
 
   juce::Logger::writeToLog("Tensor to Audio conversion successful.");
   // DBG("Tensor to Audio conversion successful.");
 
-  if (!trackBuffers.empty()) {
+  if (!transportSeparation.trackBuffers.empty()) {
     // Carica la prima traccia (es. kick drum) direttamente qui
-    loadBuffer(0,
+    transportSeparation.load(
+        0,
                fileSampleRate);  // Usa il sample rate del plugin
   }
 
-  return trackBuffers;
+  return transportSeparation.trackBuffers;
 }
 
 torch::Tensor AudioPluginAudioProcessor::demix_track(
@@ -705,7 +514,7 @@ torch::Tensor AudioPluginAudioProcessor::demix_track(
 
     int i = 0;
     estimated_sources = torch::zeros(req_shape, torch::kFloat32).to(device);
-    std::cout << "Entering elaboration loop\n";
+    juce::Logger::writeToLog("Entering elaboration loop\n");
     while (i < mix.size(1)) {
       torch::Tensor part =
           mix.index({Slice(), Slice(i, i + static_cast<int>(C))});
@@ -859,20 +668,21 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
 
 
 void AudioPluginAudioProcessor::saveSeparationIntoFile() {
-  separationNames.clear();
+  transportSeparation.separationNames.clear();
   juce::File documentsDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
     // --- Direct Call Example ---
   double sampleRate = getSampleRate();  // Get from your processor if applicable
   unsigned int bitDepth = 24;           // Example: 24-bit
 
-  for (size_t i = 0; i < separations.size(); ++i) {
+  for (size_t i = 0; i < transportSeparation.separations.size(); ++i) {
     // Create a unique output file name for each track.
     juce::String fileName = "MyPluginOutput_Track_" + juce::String(i) + ".wav";
     juce::File outputFile = documentsDir.getChildFile(fileName);
-    separationNames.push_back(fileName);
+    transportSeparation.separationNames.push_back(fileName);
 
     // Attempt to save the current audio buffer into a WAV file.
-    if (saveAudioBufferToWav(separations[i], outputFile, sampleRate,
+    if (saveAudioBufferToWav(transportSeparation.separations[i], outputFile,
+                             sampleRate,
                              bitDepth)) {
       juce::Logger::writeToLog("Saved: " + fileName);
     } else {

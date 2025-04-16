@@ -6,8 +6,18 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     AudioPluginAudioProcessor& p)
     : AudioProcessorEditor(&p),
       tracks(),
-      wave(p, p.getWaveform(), p.getSampleCount(), p.getFileSampleRate(), p.fileName),
-      snare(p, p.getWaveform2(), p.getSampleCount2(), p.getFileSampleRate(), p.fileName), //Qui andrebbe messo filename2 ma la logica funziona ancora male
+      wave(p,
+           p.transportOriginal.getWaveform(),
+           p.transportOriginal.getSampleCount(),
+           p.getFileSampleRate(),
+           p.transportOriginal.fileName),
+      snare(p,
+            p.transportSeparation.getWaveform(),
+            p.transportSeparation.getSampleCount(),
+            p.getFileSampleRate(),
+            p.transportSeparation.fileName),  // Qui andrebbe messo filename2 ma
+                                              // la logica funziona
+                          // ancora male
       audioProcessor(p) {
   startTimerHz(30);
 
@@ -17,7 +27,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   playButton2.setAlpha(0.3f);
 
   loadButton.onClick = [&]() {
-    audioProcessor.loadFile();
+    audioProcessor.transportOriginal.load();
     updateTransportButtons(audioProcessor.params.playButtonParam->get());
     repaint();
   };
@@ -25,17 +35,21 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   // Bottone Play/Stop
   playButton.onClick = [&]() {
     if (audioProcessor.params.playButtonParam->get()) {
-      audioProcessor.stopFile();  // Se è in riproduzione, ferma
+      audioProcessor.transportOriginal
+          .stopFile(playButtonParamID);  // Se è in riproduzione, ferma
     } else {
-      audioProcessor.playFile();  // Se è fermo, avvia la riproduzione
+      audioProcessor.transportOriginal
+          .playFile(playButtonParamID);  // Se è fermo, avvia la riproduzione
     }
   };
 
   playButton2.onClick = [&]() {
     if (audioProcessor.params.playButton2Param->get()) {
-      audioProcessor.stopFile2();  // Se è in riproduzione, ferma
+      audioProcessor.transportSeparation.stopFile(
+          playButton2ParamID);  // Se è in riproduzione, ferma
     } else {
-      audioProcessor.playFile2();  // Se è fermo, avvia la riproduzione
+      audioProcessor.transportSeparation.stopFile(
+          playButton2ParamID);  // Se è in riproduzione, ferma
     }
   };
 
@@ -49,10 +63,10 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
                    juce::Colours::transparentBlack);
 
   playButton.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
-  playButton.setEnabled(audioProcessor.isFileLoaded());
+  playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
   playButton2.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
-  playButton2.setEnabled(audioProcessor.isFileLoaded());
-  divideButton.setEnabled(audioProcessor.isFileLoaded());
+  playButton2.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+  divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
   full.addAndMakeVisible(wave);
   full.addAndMakeVisible(loadButton);
   full.addAndMakeVisible(playButton);
@@ -63,8 +77,8 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   for (int i = 0; i < 6; i++) {
     tracks.push_back(std::make_unique<juce::TextButton>(juce::String(i + 1)));
     tracks[i]->onClick = [this, i] {
-      if (i < audioProcessor.getSeparatedTracks().size()) {
-        audioProcessor.loadBuffer(i,
+      if (i < audioProcessor.transportSeparation.getSeparatedTracks().size()) {
+        audioProcessor.transportSeparation.load(i,
                                   audioProcessor.getFileSampleRate());
       }
     };
@@ -127,8 +141,8 @@ void AudioPluginAudioProcessorEditor::parameterValueChanged(int, float value) {
 void AudioPluginAudioProcessorEditor::updateTransportButtons(bool status) {
   // DBG("qualcosa è cambiato");
 
-  playButton.setEnabled(audioProcessor.isFileLoaded());
-  divideButton.setEnabled(audioProcessor.isFileLoaded());
+  playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+  divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
 
   if (status) {
     playButton.setButtonText("S");
@@ -152,7 +166,7 @@ void AudioPluginAudioProcessorEditor::mouseDoubleClick(
   auto* processor = getAudioProcessor(); // Non viene usato... Rimuovere?
 
   // Riporta la traccia all'inizio
-  audioProcessor.setSampleCount(0);
+  audioProcessor.transportOriginal.setSampleCount(0);
 
   // Aggiorna l'interfaccia utente (se necessario)
   repaint();
