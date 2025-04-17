@@ -31,55 +31,44 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
 
   loadButton.onClick = [&]() {
     audioProcessor.transportOriginal.load();
-    updateTransportButtons(audioProcessor.params.playButtonParam->get());
+    //updateTransportButtons(audioProcessor.params.playButtonParam->get());
+    playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+    divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
     repaint();
   };
 
   // Bottone Play/Stop
-  playButton.onClick = [&]() {
+  /*playButton.onClick = [&]() {
     if (audioProcessor.params.playButtonParam->get()) {
-      audioProcessor.transportOriginal
-          .stopFile(playButtonParamID);  // Se è in riproduzione, ferma
-      playButton.setButtonText("P");
-      playButton.setColour(juce::TextButton::buttonColourId,
-                           juce::Colours::green);  // Colore verde per Play
-
-    } else {
-      audioProcessor.transportOriginal
-          .playFile(playButtonParamID);  // Se è fermo, avvia la riproduzione
-      audioProcessor.transportSeparation.stopFile(playButton2ParamID);
-      playButton.setButtonText("S");
-      playButton.setColour(juce::TextButton::buttonColourId,
-                           juce::Colours::red);  // Colore rosso per Stop
-      playButton2.setButtonText("P");
-      playButton2.setColour(juce::TextButton::buttonColourId,
-                           juce::Colours::green);  // Colore verde per Play
+      updateTransportButtons(0, audioProcessor.params.playButtonParam->get());
+      audioProcessor.transportOriginal.stopFile(playButtonParamID);
     }
+    else {
+      updateTransportButtons(0, audioProcessor.params.playButtonParam->get());
+      audioProcessor.transportOriginal.playFile(playButtonParamID);
+    }
+  };*/
+
+  playButton.onClick = [&]() {
+    updateTransportButtons(0, audioProcessor.params.playButtonParam->get());
+    audioProcessor.params.playButtonParam->get()
+        ? audioProcessor.transportOriginal.stopFile(playButtonParamID)
+        : audioProcessor.transportOriginal.playFile(playButtonParamID);
   };
 
   playButton2.onClick = [&]() {
-    if (audioProcessor.params.playButton2Param->get()) {
-      audioProcessor.transportSeparation.stopFile(
-          playButton2ParamID);  // Se è in riproduzione, ferma
-      playButton2.setButtonText("P");
-      playButton2.setColour(juce::TextButton::buttonColourId,
-                           juce::Colours::green);  // Colore verde per Play
-    } else {
-      audioProcessor.transportSeparation.playFile(
-          playButton2ParamID);  // Se è fermo, avvia la riproduzione
-      audioProcessor.transportOriginal.stopFile(playButtonParamID);
-      playButton2.setButtonText("S");
-      playButton2.setColour(juce::TextButton::buttonColourId,
-                           juce::Colours::red);  // Colore rosso per Stop
-      playButton.setButtonText("P");
-      playButton.setColour(juce::TextButton::buttonColourId,
-                            juce::Colours::green);  // Colore verde per Play
-    }
+    updateTransportButtons(1, audioProcessor.params.playButton2Param->get());
+    audioProcessor.params.playButton2Param->get()
+        ? audioProcessor.transportSeparation.stopFile(playButton2ParamID)
+        : audioProcessor.transportSeparation.playFile(playButton2ParamID);
   };
 
 
 
-  divideButton.onClick = [&]() { audioProcessor.process(); };
+  divideButton.onClick = [&]() { 
+      audioProcessor.process();
+      playButton2.setEnabled(true);
+  };
 
   full.setColour(juce::GroupComponent::outlineColourId,
                  juce::Colours::transparentBlack);
@@ -158,61 +147,86 @@ void AudioPluginAudioProcessorEditor::resized() {
   }
 }
 
-void AudioPluginAudioProcessorEditor::parameterValueChanged(int, float value) {
-  juce::Logger::writeToLog("Value: " + juce::String(value));
+//void AudioPluginAudioProcessorEditor::parameterValueChanged(int, float value) {
+//  juce::Logger::writeToLog("Value: " + juce::String(value));
+//    if (juce::MessageManager::getInstance()->isThisTheMessageThread()) {
+//    updateTransportButtons(value != 0.0f);
+//  } else {
+//    juce::MessageManager::callAsync(
+//        [this, value] { updateTransportButtons(value != 0.0f); });
+//  }
+//}
+
+void AudioPluginAudioProcessorEditor::parameterValueChanged(int idx,
+                                                            float value) {
+  auto updateButton = [this, value, idx](bool isPlaying) {
     if (juce::MessageManager::getInstance()->isThisTheMessageThread()) {
-    updateTransportButtons(value != 0.0f);
-  } else {
-    juce::MessageManager::callAsync(
-        [this, value] { updateTransportButtons(value != 0.0f); });
+      updateTransportButtons(idx, isPlaying);
+    } else {
+      juce::MessageManager::callAsync([this, value, idx] {
+        updateTransportButtons(value != 0.0f, idx);
+      });
+    }
+  };
+
+  switch (idx) {
+    case 0:  // Primo parametro (original)
+      updateButton(value != 0.0f);
+      break;
+    case 1:  // Secondo parametro (separated)
+      updateButton(value != 0.0f);
+      break;
+    default:
+      break;
   }
 }
 
-void AudioPluginAudioProcessorEditor::updateTransportButtons(bool status) {
-  // DBG("qualcosa è cambiato");
-
-  playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
-  divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
-  playButton2.setEnabled(audioProcessor.transportSeparation.isFileLoaded());
-
-  
-    //if (audioProcessor.params.playButton) {
-    //    playButton.setButtonText("S");
-    //    playButton.setColour(juce::TextButton::buttonColourId,
-    //                        juce::Colours::red);  // Colore rosso per Stop
-    //} else {
-    //  playButton.setButtonText("P");
-    //  playButton.setColour(juce::TextButton::buttonColourId,
-    //                       juce::Colours::green);  // Colore verde per Play
-    //}
-    //if (audioProcessor.params.playButton2) {
-    //    playButton2.setButtonText("S");
-    //    playButton2.setColour(juce::TextButton::buttonColourId,
-    //                        juce::Colours::red);  // Colore rosso per Stop
-    //} else {
-    //    playButton2.setButtonText("P");
-    //    playButton2.setColour(juce::TextButton::buttonColourId,
-    //                        juce::Colours::green);  // Colore verde per Play
-    //}
-  
+void AudioPluginAudioProcessorEditor::updateTransportButtons(int sourceIndex, bool isPlaying) {
+  switch (sourceIndex) {
+    case 0:  // Original
+      //playButton.setToggleState(isPlaying, juce::dontSendNotification);
+      
+      if (isPlaying)
+      {
+        playButton.setButtonText("S");
+        playButton.setColour(juce::TextButton::buttonColourId,
+                             juce::Colours::red);
+      } else 
+      {
+        playButton.setButtonText("P");
+        playButton.setColour(juce::TextButton::buttonColourId,
+                             juce::Colours::green);
+      }
+      break;
+    case 1:  // Separated
+      //playButton2.setToggleState(isPlaying, juce::dontSendNotification);
+      if (isPlaying) {
+        playButton2.setButtonText("S");
+        playButton2.setColour(juce::TextButton::buttonColourId,
+                             juce::Colours::red);
+      } else {
+        playButton2.setButtonText("P");
+        playButton2.setColour(juce::TextButton::buttonColourId,
+                             juce::Colours::green);
+      }
+      break;
+  }
 }
+
+
+//void AudioPluginAudioProcessorEditor::updateTransportButtons(bool status) {
+//  // DBG("qualcosa è cambiato");
+//
+//  playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+//  divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+//  playButton2.setEnabled(audioProcessor.transportSeparation.isFileLoaded());
+//}
 
 
 void AudioPluginAudioProcessorEditor::timerCallback() {
   repaint();
 }
 
-void AudioPluginAudioProcessorEditor::mouseDoubleClick(
-    const juce::MouseEvent& event) {
-  // Ottieni un riferimento al Processor
-  auto* processor = getAudioProcessor(); // Non viene usato... Rimuovere?
-
-  // Riporta la traccia all'inizio
-  audioProcessor.transportOriginal.setSampleCount(0);
-
-  // Aggiorna l'interfaccia utente (se necessario)
-  repaint();
-}
 
 void AudioPluginAudioProcessorEditor::mouseEnter(const juce::MouseEvent& event) {
     // Se il mouse è sopra un bottone, rendilo opaco

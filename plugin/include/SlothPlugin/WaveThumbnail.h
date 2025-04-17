@@ -62,6 +62,8 @@ private:
   const double fileSampleRate;
   void drawWaveform(juce::Graphics& g);
 
+  void mouseDoubleClick(const juce::MouseEvent& event);
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WaveThumbnail)
 };
 }  // namespace audio_plugin

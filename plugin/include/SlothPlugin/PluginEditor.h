@@ -39,15 +39,14 @@ private:
 
   
   AudioPluginAudioProcessor& audioProcessor;
-  void updateTransportButtons(bool status);
+  void updateTransportButtons(int sourceIndex, bool isPlaying);
 
   void mouseEnter(const juce::MouseEvent& event);
   void mouseExit(const juce::MouseEvent& event);
 
-  void parameterValueChanged(int, float value) override;
+  void parameterValueChanged(int idx, float value) override;
   void parameterGestureChanged(int, bool) override {}
-  void mouseDoubleClick(
-      const juce::MouseEvent& event);
+
   WaveThumbnail original;
   WaveThumbnail separation;
 

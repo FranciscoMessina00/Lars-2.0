@@ -183,6 +183,9 @@ void WaveThumbnail::paint(juce::Graphics& g) {
 
   g.setColour(juce::Colours::white);
   g.drawLine(playHeadPosX, 0, playHeadPosX, getHeight(), 2.0f);
+  if (playHeadPosX >= getWidth()) {
+    transport.setSampleCount(0);
+  }
 }
 
 
@@ -408,6 +411,13 @@ void WaveThumbnail::drawWaveform(juce::Graphics& g) {
                    juce::Justification::topLeft, 1);
 }
 
+
+void WaveThumbnail::mouseDoubleClick(
+    const juce::MouseEvent& event) {
+  // Riporta la traccia all'inizio
+  transport.setSampleCount(0);
+  repaint();
+}
 
 
 }  // namespace audio_plugin

@@ -29,7 +29,7 @@ void TransportOriginal::load() {
 void TransportOriginal::load(const juce::String& path) {
   stopFile(playButtonParamID);
   setSampleCount(0);
-  DBG("Siamo dentro");
+  //DBG("Siamo dentro");
   auto file = juce::File(path);
   formatReader = formatManager.createReaderFor(file);
   if (formatReader != nullptr) {

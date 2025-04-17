@@ -145,6 +145,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     return;
   }
 
+
   double systemSampleRate = getSampleRate();
   sampleRateRatio = fileSampleRate / systemSampleRate;
 
@@ -155,12 +156,12 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   juce::AudioSourceChannelInfo channelInfo(&buffer, 0, buffer.getNumSamples());
   
   if (params.playButton) {
-    transportOriginal.sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
+    transportOriginal.sampleCount += static_cast<int>(buffer.getNumSamples() * sampleRateRatio);
     transportOriginal.transport.getNextAudioBlock(channelInfo);
   }
     
   if (params.playButton2){
-    transportSeparation.sampleCount += static_cast<long>(buffer.getNumSamples() * sampleRateRatio);
+    transportSeparation.sampleCount += static_cast<int>(buffer.getNumSamples() * sampleRateRatio);
     transportSeparation.transport.getNextAudioBlock(channelInfo);
   }
     

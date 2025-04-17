@@ -9,7 +9,7 @@ void TransportSeparation::load(int indx, double sampleRate) {
 
     // Crea bufferReader con il buffer separato
     bufferReader = std::make_unique<BufferAudioSource>(
-        trackBuffers[indx], false);  // false = no loop di default
+        trackBuffers[indx], true);  // true = loop
 
     // Configura il transport
     transport.setSource(bufferReader.get(), 0, nullptr, sampleRate);
