@@ -31,6 +31,7 @@ private:
   juce::GroupComponent full, second;
   juce::TextButton loadButton{"L"};
   juce::TextButton divideButton{"D"};
+  juce::ComboBox trackSelector{"Select Model"};
   /*std::array<juce::TextButton, 6> tracks = {
       juce::TextButton{"1"}, juce::TextButton{"2"}, juce::TextButton{"3"},
       juce::TextButton{"4"}, juce::TextButton{"5"}, juce::TextButton{"6"}
