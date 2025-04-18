@@ -3,7 +3,7 @@
 
 namespace audio_plugin {
 void TransportOriginal::load() {
-  stopFile(playButtonParamID);
+  stopFile();
   setSampleCount(0);
   juce::FileChooser chooser{"Please load a file"};
   if (chooser.browseForFileToOpen()) {
@@ -27,7 +27,7 @@ void TransportOriginal::load() {
 }
 
 void TransportOriginal::load(const juce::String& path) {
-  stopFile(playButtonParamID);
+  stopFile();
   setSampleCount(0);
   //DBG("Siamo dentro");
   auto file = juce::File(path);
@@ -42,7 +42,7 @@ void TransportOriginal::load(const juce::String& path) {
     waveform.setSize(2, sampleLenght);
     formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
     fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
-    stopFile(playButtonParamID);
+    stopFile();
   }
 }
 

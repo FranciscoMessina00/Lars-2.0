@@ -9,7 +9,7 @@ namespace audio_plugin {
 class TransportSeparation : public TransportComponent {
 public:
   TransportSeparation(juce::AudioProcessorValueTreeState& apvts, Parameters& params)
-      : TransportComponent(apvts, params) {}
+      : TransportComponent(apvts, params, playButton2ParamID) {}
   ~TransportSeparation() = default;
 
   void load(int indx, double sampleRate);
@@ -17,6 +17,7 @@ public:
     return trackBuffers;
   };
   bool isFileLoaded() const override { return bufferReader != nullptr; };
+  void setSampleCount(int newSampleCount) override;
   std::vector<juce::AudioBuffer<float>> separations;
   std::unique_ptr<BufferAudioSource> bufferReader;
   std::vector<juce::AudioBuffer<float>> trackBuffers;

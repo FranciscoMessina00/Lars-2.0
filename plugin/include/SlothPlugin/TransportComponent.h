@@ -10,7 +10,9 @@
 namespace audio_plugin {
 class TransportComponent  {
 public:
-  TransportComponent(juce::AudioProcessorValueTreeState& apvts, Parameters& params)
+  TransportComponent(juce::AudioProcessorValueTreeState& apvts,
+                     Parameters& params,
+                     juce::ParameterID id)
       : state(TransportState::Stopped),  
         sampleCount(0),                  
         fileName(""),                    
@@ -21,13 +23,14 @@ public:
         waveform(),
         formatManager(),
         params(params),
-        apvts(apvts)
+        apvts(apvts),
+        paramId(id)
   {}
   ~TransportComponent() = default;
 
-  void playFile(juce::ParameterID);
-  void stopFile(juce::ParameterID);
-  void setSampleCount(int newSampleCount);
+  void playFile();
+  void stopFile();
+  virtual void setSampleCount(int newSampleCount);
   std::atomic<int>& getSampleCount() { return sampleCount; };
   juce::String fileName;
   double getFileSampleRate() { return fileSampleRate; };
@@ -38,6 +41,7 @@ public:
 
   juce::AudioProcessorValueTreeState& apvts;
   Parameters& params;
+  juce::ParameterID paramId;
 
   juce::AudioTransportSource transport;
   static enum TransportState { Stopped, Starting, Stopping, Playing };

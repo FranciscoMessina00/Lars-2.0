@@ -1,10 +1,27 @@
 #include "SlothPlugin/TransportSeparation.h"
 
 namespace audio_plugin {
+void TransportSeparation::setSampleCount(int newSampleCount) {
+  sampleCount = newSampleCount;
+
+  // Calcola la nuova posizione in secondi
+  if (bufferReader.get() != nullptr) {
+    auto targetPositionInSeconds =
+        static_cast<double>(sampleCount) / fileSampleRate;
+
+    // Applica lo smoothing
+    // newPositionInSeconds += (targetPositionInSeconds - newPositionInSeconds)
+    // * coeff;
+    // Imposta la nuova posizione del trasporto
+    transport.setPosition(targetPositionInSeconds);
+    if (sampleCount == 0 && (params.playButton || params.playButton2))
+      transport.start();
+  }
+}
 void TransportSeparation::load(int indx, double sampleRate) {
   try {
     waveform.clear();
-    stopFile(playButton2ParamID);
+    stopFile();
     setSampleCount(0);
 
     // Crea bufferReader con il buffer separato

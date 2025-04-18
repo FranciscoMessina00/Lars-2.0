@@ -10,7 +10,7 @@ class TransportOriginal : public TransportComponent  {
 public:
   TransportOriginal(juce::AudioProcessorValueTreeState& apvts,
                     Parameters& params)
-      : TransportComponent(apvts, params) {}
+      : TransportComponent(apvts, params, playButtonParamID) {}
   ~TransportOriginal() = default;
 
   void load();

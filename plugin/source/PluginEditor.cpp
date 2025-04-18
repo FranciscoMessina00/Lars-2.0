@@ -52,15 +52,21 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   playButton.onClick = [&]() {
     updateTransportButtons(0, audioProcessor.params.playButtonParam->get());
     audioProcessor.params.playButtonParam->get()
-        ? audioProcessor.transportOriginal.stopFile(playButtonParamID)
-        : audioProcessor.transportOriginal.playFile(playButtonParamID);
+        ? audioProcessor.transportOriginal.stopFile()
+        : (
+           audioProcessor.transportOriginal.playFile(),
+           audioProcessor.transportSeparation.stopFile()
+          );
   };
 
   playButton2.onClick = [&]() {
     updateTransportButtons(1, audioProcessor.params.playButton2Param->get());
     audioProcessor.params.playButton2Param->get()
-        ? audioProcessor.transportSeparation.stopFile(playButton2ParamID)
-        : audioProcessor.transportSeparation.playFile(playButton2ParamID);
+        ? audioProcessor.transportSeparation.stopFile()
+        : (
+           audioProcessor.transportSeparation.playFile(),
+           audioProcessor.transportOriginal.stopFile()
+          );
   };
 
 
@@ -164,7 +170,7 @@ void AudioPluginAudioProcessorEditor::parameterValueChanged(int idx,
       updateTransportButtons(idx, isPlaying);
     } else {
       juce::MessageManager::callAsync([this, value, idx] {
-        updateTransportButtons(value != 0.0f, idx);
+          updateTransportButtons(idx, value != 0.0f);
       });
     }
   };

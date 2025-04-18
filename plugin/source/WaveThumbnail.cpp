@@ -272,7 +272,7 @@ void WaveThumbnail::setPlayHeadPositionFromMouse(int mouseX) {
   /*auto newSampleCount = static_cast<long>(
       positionRatio * audioProcessor.getWaveform(section).getNumSamples());*/
   auto newSampleCount = static_cast<long>(
-      positionRatio * audioProcessor.transportOriginal.getWaveform().getNumSamples());
+      positionRatio * transport.getWaveform().getNumSamples());
 
   // Imposta il nuovo sampleCount
   transport.setSampleCount(newSampleCount);

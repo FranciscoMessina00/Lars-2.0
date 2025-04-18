@@ -47,16 +47,16 @@ void TransportComponent::transportStateChanged(TransportState newState) {
   }
 }
 
-void TransportComponent::playFile(juce::ParameterID parameter) {
-  apvts.getParameter(parameter.getParamID())
+void TransportComponent::playFile() {
+  apvts.getParameter(paramId.getParamID())
       ->setValueNotifyingHost(1.0f);
   transportStateChanged(Starting);
   params.playButton = params.playButtonParam->get();
   params.playButton2 = params.playButton2Param->get();
 }
 
-void TransportComponent::stopFile(juce::ParameterID parameter) {
-  apvts.getParameter(parameter.getParamID())
+void TransportComponent::stopFile() {
+  apvts.getParameter(paramId.getParamID())
       ->setValueNotifyingHost(0.0f);
   transportStateChanged(Stopping);
   params.playButton = params.playButtonParam->get();
