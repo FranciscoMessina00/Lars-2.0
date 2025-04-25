@@ -131,12 +131,14 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
 
   audioProcessor.params.playButtonParam->addListener(this);
   audioProcessor.params.playButton2Param->addListener(this);
+  audioProcessor.errorBroadcaster.addActionListener(this);
   addMouseListener(this, true);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor() {
   audioProcessor.params.playButtonParam->removeListener(this);
   audioProcessor.params.playButton2Param->removeListener(this);
+  audioProcessor.errorBroadcaster.removeActionListener(this);
   removeMouseListener(this);
   stopTimer();
 }

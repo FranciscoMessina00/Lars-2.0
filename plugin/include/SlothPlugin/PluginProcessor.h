@@ -24,8 +24,24 @@ using namespace torch::indexing;
 //#include <juce_header/JuceHeader.h>
 
 namespace audio_plugin {
-class AudioPluginAudioProcessor : public juce::AudioProcessor,
-                                  public juce::ChangeBroadcaster {
+struct ErrorBroadcaster : private juce::AsyncUpdater,
+                          public juce::ActionBroadcaster {
+  // called on audio thread
+  void postError(const juce::String& e) {
+    lastMessage = e;
+    triggerAsyncUpdate();
+  }
+
+private:
+  juce::String lastMessage;
+
+  // runs on the message thread
+  void handleAsyncUpdate() override {
+    sendActionMessage(lastMessage);
+  }
+};
+
+class AudioPluginAudioProcessor : public juce::AudioProcessor {
 public:
   AudioPluginAudioProcessor();
   ~AudioPluginAudioProcessor() override;
@@ -73,6 +89,8 @@ public:
   
   TransportOriginal transportOriginal;
   TransportSeparation transportSeparation;
+
+  ErrorBroadcaster errorBroadcaster;
 
 private:
 

@@ -219,8 +219,10 @@ void AudioPluginAudioProcessor::process() {
     module = torch::jit::load(modelPath.toStdString());
 
   } catch (const c10::Error& e) {
-    juce::Logger::writeToLog("Error loading the model: " +
-                             juce::String(e.what()));
+    /*juce::Logger::writeToLog("Error loading the model: " +
+                             juce::String(e.what()));*/
+    errorBroadcaster.postError("Error loading the model:");
+    return;
   }
 
   juce::Logger::writeToLog("ok\n");
@@ -252,7 +254,8 @@ void AudioPluginAudioProcessor::process() {
         " Type of output: " + juce::String(c10::toString(output.scalar_type())));
 
   } catch (std::exception e) {
-    std::cerr << e.what();
+    errorBroadcaster.postError("Error in the demixing part");
+    return;
   }
 
   transportSeparation.separations =
@@ -296,7 +299,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
 
   // Check if tensor is defined (not null/empty)
   if (!tensor.defined()) {
-    juce::Logger::writeToLog(
+      errorBroadcaster.postError(
         "Error: tensorToAudio received an undefined tensor.");
     // DBG("Error: tensorToAudio received an undefined tensor.");
 
@@ -313,7 +316,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
       tensor = tensor.cpu();
     } catch (const c10::Error& e) {
       // c10::Error is the base exception type for LibTorch/PyTorch C++ errors
-      juce::Logger::writeToLog("Error moving tensor to CPU: " +
+      errorBroadcaster.postError("Error moving tensor to CPU: " +
                                juce::String(e.what()));
       // DBG("Error moving tensor to CPU: " + juce::String(e.what()));
       return transportSeparation.trackBuffers;  // Cannot proceed
@@ -322,7 +325,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
 
   // Check data type - MUST be float
   if (tensor.scalar_type() != torch::kFloat) {
-    juce::Logger::writeToLog(
+    errorBroadcaster.postError(
         "Error: Input tensor must be of type float (torch::kFloat). Actual "
         "type: " +
         juce::String(c10::toString(tensor.scalar_type())));
@@ -342,7 +345,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
       ss << tensor.size(i) << (i == tensor.dim() - 1 ? "" : ", ");
     }
     ss << "]";
-    juce::Logger::writeToLog(
+    errorBroadcaster.postError(
         "Error: Input tensor must have 3 dimensions ([Ntracks, "
         "NchannelsPerTrack, NumSamples]). Actual shape: " +
         juce::String(ss.str()));
@@ -361,7 +364,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
       tensor = tensor.contiguous();
     }
   } catch (const c10::Error& e) {
-    juce::Logger::writeToLog("Error making tensor contiguous: " +
+    errorBroadcaster.postError("Error making tensor contiguous: " +
                              juce::String(e.what()));
     // DBG("Error making tensor contiguous: " + juce::String(e.what()));
     return transportSeparation.trackBuffers;
@@ -374,7 +377,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
 
   // Basic check for non-negative dimensions (numSamples can be 0)
   if (numTracks < 0 || channelsPerTrack < 0 || numSamples < 0) {
-    juce::Logger::writeToLog(
+    errorBroadcaster.postError(
         "Error: Tensor dimensions are negative. This should not happen.");
     // DBG("Error: Tensor dimensions are negative.");
     return transportSeparation.trackBuffers;
@@ -445,7 +448,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
       transportSeparation.trackBuffers.push_back(std::move(buffer));
     }
   } catch (const c10::Error& e) {  // Catch LibTorch specific errors during loop
-    juce::Logger::writeToLog(
+    errorBroadcaster.postError(
         "LibTorch Error during tensor data copying loop: " +
         juce::String(e.what()));
     // DBG(...);
@@ -454,7 +457,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     return transportSeparation.trackBuffers;  // Return empty on error
   } catch (const std::exception& e) {  // Catch other potential errors (like the
                                        // runtime_error above)
-    juce::Logger::writeToLog(
+    errorBroadcaster.postError(
         "Standard Exception during tensor data copying loop: " +
         juce::String(e.what()));
     // DBG(...);
@@ -604,7 +607,7 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
       outputFile.createOutputStream());
 
   if (fileStream == nullptr) {
-    juce::Logger::writeToLog(
+    errorBroadcaster.postError(
         "Error: Could not create output stream for file: " +
         outputFile.getFullPathName());
     // You might want to use DBG() for debug builds or show an alert window
@@ -628,7 +631,7 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
   );
 
   if (writer == nullptr) {
-    juce::Logger::writeToLog("Error: Could not create WAV writer for file: " +
+    errorBroadcaster.postError("Error: Could not create WAV writer for file: " +
                              outputFile.getFullPathName());
     // DBG ("Error: Could not create WAV writer for file: " +
     // outputFile.getFullPathName()); fileStream will be deleted automatically
@@ -648,7 +651,8 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
       writer->writeFromAudioSampleBuffer(bufferToSave, 0, numSamples);
 
   if (!success) {
-    juce::Logger::writeToLog("Error: Failed to write audio data to WAV file: " +
+    errorBroadcaster.postError(
+        "Error: Failed to write audio data to WAV file: " +
                              outputFile.getFullPathName());
     // DBG ("Error: Failed to write audio data to WAV file: " +
     // outputFile.getFullPathName()); Writer (and the stream it owns) will be
@@ -695,7 +699,7 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
                              bitDepth)) {
       juce::Logger::writeToLog("Saved: " + fileName);
     } else {
-      juce::Logger::writeToLog("Failed to save: " + fileName);
+      errorBroadcaster.postError("Failed to save: " + fileName);
     }
   }
 }
@@ -722,7 +726,7 @@ void AudioPluginAudioProcessor::setupLibTorch() {
         juce::String(
             "Errore nell'impostare la directory di ricerca DLL (Codice: ") +
         juce::String(error) + ")";
-    juce::Logger::writeToLog(errorMessage);
+    errorBroadcaster.postError(errorMessage);
     // Potresti voler gestire questo errore in modo più robusto
   }
 }

@@ -11,7 +11,9 @@ namespace audio_plugin {
 class AudioPluginAudioProcessorEditor
     : public juce::AudioProcessorEditor,
       public juce::Timer,
-      private juce::AudioProcessorParameter::Listener {
+      private juce::AudioProcessorParameter::Listener,
+      private juce::ActionListener
+{
 public:
   AudioPluginAudioProcessorEditor(AudioPluginAudioProcessor&);
   ~AudioPluginAudioProcessorEditor() override;
@@ -44,6 +46,10 @@ private:
 
   void mouseEnter(const juce::MouseEvent& event);
   void mouseExit(const juce::MouseEvent& event);
+  void actionListenerCallback(const juce::String& message) override {
+    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                           "Plugin Error", message);
+  }
 
   void parameterValueChanged(int idx, float value) override;
   void parameterGestureChanged(int, bool) override {}
