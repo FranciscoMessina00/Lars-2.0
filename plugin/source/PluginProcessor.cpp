@@ -147,7 +147,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
 
   double systemSampleRate = getSampleRate();
-  sampleRateRatio = fileSampleRate / systemSampleRate;
+  sampleRateRatio = TransportComponent::getFileSampleRate() / systemSampleRate;
 
   for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i) {
     buffer.clear(i, 0, buffer.getNumSamples());
@@ -674,10 +674,11 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
 
 void AudioPluginAudioProcessor::saveSeparationIntoFile() {
   transportSeparation.separationNames.clear();
+  transportSeparation.separationPaths.clear();
   juce::File documentsDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
     // --- Direct Call Example ---
-  double sampleRate = getSampleRate();  // Get from your processor if applicable
-  unsigned int bitDepth = 24;           // Example: 24-bit
+  double sampleRate = TransportComponent::getFileSampleRate(); 
+  unsigned int bitDepth = TransportComponent::getFileBitDepth();
 
   for (size_t i = 0; i < transportSeparation.separations.size(); ++i) {
     // Create a unique output file name for each track.
@@ -685,12 +686,12 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
         transportOriginal.fileName + "_" + instruments[i];
     juce::File outputFile = documentsDir.getChildFile(fileName + ".wav");
     transportSeparation.separationNames.push_back(fileName);
+    transportSeparation.separationPaths.push_back(outputFile.getFullPathName());
 
     if (!transportSeparation.trackBuffers.empty()) {
       // Carica la prima traccia (es. kick drum) direttamente qui
       transportSeparation.load(
-          0,
-          fileSampleRate);  // Usa il sample rate del plugin
+          0);  // Usa il sample rate del plugin
     }
 
     // Attempt to save the current audio buffer into a WAV file.

@@ -2,6 +2,9 @@
 
 namespace audio_plugin {
 
+double TransportComponent::fileSampleRate = 44100.0;
+unsigned int TransportComponent::fileBitDepth = 24;
+
 void TransportComponent::setSampleCount(int newSampleCount) {
   // Limita il valore di sampleCount alla lunghezza del file audio
   // auto maxSampleCount = static_cast<long>(readerSource->getTotalLength());
@@ -63,4 +66,24 @@ void TransportComponent::stopFile() {
   params.playButton2 = params.playButton2Param->get();
 }
 
+void TransportComponent::setFileSampleRate(double sampleRate) 
+{
+  fileSampleRate = sampleRate;
 }
+
+double TransportComponent::getFileSampleRate() 
+{
+  return fileSampleRate;
+}
+
+void TransportComponent::setFileBitDepth(unsigned int bitDepth) 
+{
+  TransportComponent::fileBitDepth = bitDepth;
+}
+
+unsigned int TransportComponent::getFileBitDepth() 
+{
+  return fileBitDepth;
+}
+
+}  // namespace audio_plugin

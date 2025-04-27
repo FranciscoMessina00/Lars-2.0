@@ -7,7 +7,7 @@ void TransportSeparation::setSampleCount(int newSampleCount) {
   // Calcola la nuova posizione in secondi
   if (bufferReader.get() != nullptr) {
     auto targetPositionInSeconds =
-        static_cast<double>(sampleCount) / fileSampleRate;
+        static_cast<double>(sampleCount) / TransportComponent::getFileSampleRate();
 
     // Applica lo smoothing
     // newPositionInSeconds += (targetPositionInSeconds - newPositionInSeconds)
@@ -18,7 +18,7 @@ void TransportSeparation::setSampleCount(int newSampleCount) {
       transport.start();
   }
 }
-void TransportSeparation::load(int indx, double sampleRate) {
+void TransportSeparation::load(int indx) {
   try {
     waveform.clear();
     stopFile();
@@ -29,7 +29,7 @@ void TransportSeparation::load(int indx, double sampleRate) {
         trackBuffers[indx], true);  // true = loop
 
     // Configura il transport
-    transport.setSource(bufferReader.get(), 0, nullptr, sampleRate);
+    transport.setSource(bufferReader.get(), 0, nullptr, TransportComponent::getFileSampleRate());
     transportStateChanged(Stopped);
 
     // Aggiorna la waveform
@@ -43,5 +43,6 @@ void TransportSeparation::load(int indx, double sampleRate) {
   }
 
 }
+
 
 }  // namespace audio_plugin

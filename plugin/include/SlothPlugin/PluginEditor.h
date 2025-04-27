@@ -11,6 +11,7 @@ namespace audio_plugin {
 class AudioPluginAudioProcessorEditor
     : public juce::AudioProcessorEditor,
       public juce::Timer,
+      public juce::DragAndDropContainer,
       private juce::AudioProcessorParameter::Listener,
       private juce::ActionListener
 {
@@ -46,6 +47,8 @@ private:
 
   void mouseEnter(const juce::MouseEvent& event);
   void mouseExit(const juce::MouseEvent& event);
+  void mouseDrag(const juce::MouseEvent& event) override;
+  void mouseUp(const juce::MouseEvent& event);
   void actionListenerCallback(const juce::String& message) override {
     juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                                            "Plugin Error", message);
@@ -56,6 +59,9 @@ private:
 
   WaveThumbnail original;
   WaveThumbnail separation;
+
+  bool isDraggingTrack = false;  // Flag per evitare drag multipli
+  int draggedTrackIndex = -1;    // Indice della traccia trascinata
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessorEditor)
 };

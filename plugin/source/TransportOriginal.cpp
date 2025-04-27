@@ -21,7 +21,9 @@ void TransportOriginal::load() {
       auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
       waveform.setSize(2, sampleLenght);
       formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
-      fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
+      TransportComponent::setFileSampleRate(readerSource->getAudioFormatReader()->sampleRate);
+      TransportComponent::setFileBitDepth(
+          readerSource->getAudioFormatReader()->bitsPerSample);
     }
   }
 }
@@ -41,7 +43,7 @@ void TransportOriginal::load(const juce::String& path) {
     auto sampleLenght = static_cast<int>(formatReader->lengthInSamples);
     waveform.setSize(2, sampleLenght);
     formatReader->read(&waveform, 0, sampleLenght, 0, true, true);
-    fileSampleRate = readerSource->getAudioFormatReader()->sampleRate;
+    TransportComponent::setFileSampleRate(readerSource->getAudioFormatReader()->sampleRate);
     stopFile();
   }
 }

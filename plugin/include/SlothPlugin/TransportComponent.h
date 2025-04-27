@@ -17,7 +17,6 @@ public:
         sampleCount(0),                  
         fileName(""),                    
         formatReader(nullptr),
-        fileSampleRate(44100.0),
         readerSource(nullptr),
         transport(),
         waveform(),
@@ -33,7 +32,10 @@ public:
   virtual void setSampleCount(int newSampleCount);
   std::atomic<int>& getSampleCount() { return sampleCount; };
   juce::String fileName;
-  double getFileSampleRate() { return fileSampleRate; };
+  static double getFileSampleRate();
+  static void setFileSampleRate(double sampleRate);
+  static unsigned int getFileBitDepth();
+  static void setFileBitDepth(unsigned int bitDepth);
   juce::AudioBuffer<float>& getWaveform() {
     return waveform;
   };
@@ -51,9 +53,13 @@ public:
   std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
   juce::AudioBuffer<float> waveform;
   std::atomic<int> sampleCount;
-  double fileSampleRate = 44100.0;
+  
 
   void transportStateChanged(TransportState newState);
+
+private:
+  static double fileSampleRate;
+  static unsigned int fileBitDepth;
 
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TransportComponent)

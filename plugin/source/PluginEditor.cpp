@@ -9,18 +9,16 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
       original(p,
            p.transportOriginal.getWaveform(),
            p.transportOriginal.getSampleCount(),
-           p.getFileSampleRate(),
+           TransportComponent::getFileSampleRate(),
            p.transportOriginal.fileName, 
            p.transportOriginal),
       separation(
           p,
             p.transportSeparation.getWaveform(),
             p.transportSeparation.getSampleCount(),
-            p.getFileSampleRate(),
+            TransportComponent::getFileSampleRate(),
             p.transportSeparation.fileName,
-            p.transportSeparation),  // Qui andrebbe messo filename2 ma
-                                              // la logica funziona
-                          // ancora male
+            p.transportSeparation),  
       audioProcessor(p) {
   startTimerHz(30);
 
@@ -112,12 +110,12 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     tracks.push_back(std::make_unique<juce::TextButton>(juce::String(i + 1)));
     tracks[i]->onClick = [this, i] {
       if (i < audioProcessor.transportSeparation.getSeparatedTracks().size()) {
-        audioProcessor.transportSeparation.load(i,
-                                  audioProcessor.getFileSampleRate());
+        audioProcessor.transportSeparation.load(i);
       }
     };
     tracks[i]->setAlpha(0.3f);
     tracks[i]->setEnabled(true);
+    tracks[i]->setMouseCursor(juce::MouseCursor::DraggingHandCursor);
     second.addAndMakeVisible(tracks[i].get());
   }
   
@@ -301,6 +299,83 @@ void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
         }
     }
 }
+
+// In PluginEditor.cpp
+
+void AudioPluginAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event) {
+  // Controlla se stiamo già trascinando per evitare di iniziare più volte
+  if (isDraggingTrack)
+    return;
+
+  // Identifica su quale componente è iniziato il clic originale
+  juce::Component* sourceComponent = event.originalComponent;
+
+  // Controlla se il componente sorgente è uno dei nostri pulsanti 'tracks'
+  for (int i = 0; i < tracks.size(); ++i) {
+    if (sourceComponent == tracks[i].get()) {
+      // Verifica che ci sia stato un movimento sufficiente per essere
+      // considerato un drag
+      if (event.mouseWasDraggedSinceMouseDown()) {
+        juce::String fullPath;
+        // Accedi in modo sicuro all'array nel processore
+        if (i >= 0 &&
+            i < audioProcessor.transportSeparation.separationPaths.size()) {
+          fullPath = audioProcessor.transportSeparation.separationPaths[i];
+        } else {
+          juce::Logger::writeToLog("Error: Invalid index " + juce::String(i) +
+                                   " for separationNames.");
+          return;  // Indice non valido, esci
+        }
+        
+        juce::File fileToDrag(fullPath);          // Crea un oggetto F
+        if (fileToDrag.existsAsFile())  // Controlla che il percorso
+                                                  // sia valido e il file esista
+        {
+          juce::Logger::writeToLog("Starting drag for track " +
+                                   juce::String(i) +
+                                   " file: " + fileToDrag.getFullPathName());
+
+          juce::StringArray filesToDrag;
+          filesToDrag.add(fileToDrag.getFullPathName()); 
+
+          // Imposta i flag per indicare che stiamo trascinando
+          isDraggingTrack = true;
+          draggedTrackIndex = i;  // Potrebbe servire per feedback visivo
+
+          // Avvia l'operazione di drag-and-drop esterna
+          // Il 'false' significa che il file non può essere mosso (solo copiato
+          // dalla DAW/OS)
+          performExternalDragDropOfFiles(filesToDrag, false, sourceComponent);
+
+          // NOTA: L'esecuzione si blocca qui finché il drag non finisce.
+          // Dopo il drag, dobbiamo resettare i flag. Lo facciamo in mouseUp.
+
+        } else {
+          juce::Logger::writeToLog("Cannot start drag ... " +
+                                   fileToDrag.getFullPathName());
+        }
+      }
+      return;  // Esci dal loop una volta trovato il pulsante sorgente
+    }
+  }
+
+  // Se il drag non è iniziato su un pulsante 'tracks', puoi gestire altri drag
+  // qui se necessario
+}
+
+// È buona norma resettare i flag in mouseUp
+void AudioPluginAudioProcessorEditor::mouseUp(const juce::MouseEvent& event) {
+  if (isDraggingTrack) {
+    juce::Logger::writeToLog("Drag finished for track " +
+                             juce::String(draggedTrackIndex));
+    isDraggingTrack = false;
+    draggedTrackIndex = -1;
+    // Potresti voler ripristinare l'aspetto del pulsante qui se lo hai
+    // modificato durante il drag
+  }
+  // Gestisci altri eventi mouseUp se necessario
+}
+
 
 
 //void AudioPluginAudioProcessorEditor::mouseEnter(

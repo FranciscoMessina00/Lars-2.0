@@ -83,7 +83,7 @@ public:
 
   Parameters params;
   
-  double getFileSampleRate() { return fileSampleRate; };
+  //double getFileSampleRate() { return fileSampleRate; };
 
   void process();
   
@@ -91,6 +91,8 @@ public:
   TransportSeparation transportSeparation;
 
   ErrorBroadcaster errorBroadcaster;
+
+  std::vector<std::string> instruments;
 
 private:
 
@@ -114,11 +116,10 @@ private:
                             double sampleRate,
                             unsigned int bitDepth
   );
-  double fileSampleRate = 44100.0;
+  //double fileSampleRate = 44100.0;
   double sampleRateRatio = 1.0;
   double coeff = 0.0;
   double newPositionInSeconds = 0;
-  std::vector<std::string> instruments;
 
   void setupLibTorch();
 
