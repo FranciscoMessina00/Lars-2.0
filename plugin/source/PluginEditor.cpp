@@ -34,15 +34,30 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   trackSelector.setSelectedId(1, juce::dontSendNotification);
   trackSelector.onChange = [&]() {
     int selectedIndex = trackSelector.getSelectedItemIndex();
-    if (selectedIndex >= 0 && selectedIndex < tracks.size()) {
+    if (selectedIndex >= 0 && selectedIndex < items.size()) {
       // Change the model that will be considered for the separation
       juce::Logger::writeToLog("Selected model: " +
-                               tracks[selectedIndex]->getButtonText());
+                               trackSelector.getItemText(selectedIndex));
+      switch (selectedIndex) {
+        case 0:
+          audioProcessor.modelName = "mdx23c.pt";
+          break;
+        case 1:
+          audioProcessor.modelName = "mdx23c2.pt";
+          break;
+        default:
+          audioProcessor.modelName = "";
+          break;
+      }
     }
   };
 
   loadButton.onClick = [&]() {
-    audioProcessor.transportOriginal.load();
+    if (audioProcessor.transportOriginal.load()) {
+      audioProcessor.transportSeparation.reset();
+      playButton2.setEnabled(false);
+      separation.repaint();
+    };
     //updateTransportButtons(audioProcessor.params.playButtonParam->get());
     playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
     divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
@@ -207,7 +222,7 @@ void AudioPluginAudioProcessorEditor::updateTransportButtons(int sourceIndex, bo
   switch (sourceIndex) {
     case 0:  // Original
       //playButton.setToggleState(isPlaying, juce::dontSendNotification);
-      
+      playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
       if (isPlaying)
       {
         playButton.setButtonText("S");

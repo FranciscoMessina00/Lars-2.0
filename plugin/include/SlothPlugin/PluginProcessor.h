@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Windows.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>
@@ -82,6 +81,7 @@ public:
                                            Parameters::createParameterLayout()};
 
   Parameters params;
+  juce::String modelName = "mdx23c.pt";
   
   //double getFileSampleRate() { return fileSampleRate; };
 
@@ -120,10 +120,6 @@ private:
   double sampleRateRatio = 1.0;
   double coeff = 0.0;
   double newPositionInSeconds = 0;
-
-  void setupLibTorch();
-
-
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 

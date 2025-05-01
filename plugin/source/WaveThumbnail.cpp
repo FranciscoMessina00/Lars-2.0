@@ -70,9 +70,12 @@ bool WaveThumbnail::isInterestedInFileDrag(const juce::StringArray& files) {
 void WaveThumbnail::filesDropped(const juce::StringArray& files, int x, int y) {
   for (auto file : files) {
     if (isInterestedInFileDrag(file)) {
+      //audioProcessor.deleteTempFiles();
       auto myFile = std::make_unique<juce::File>(file);
       audioProcessor.transportOriginal.fileName = myFile->getFileNameWithoutExtension();
-      audioProcessor.transportOriginal.load(file);
+      if (audioProcessor.transportOriginal.load(file)) {
+        audioProcessor.transportSeparation.reset();
+      };
     }
   }
   repaint();

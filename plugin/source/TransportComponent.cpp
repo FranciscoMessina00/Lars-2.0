@@ -5,6 +5,9 @@ namespace audio_plugin {
 double TransportComponent::fileSampleRate = 44100.0;
 unsigned int TransportComponent::fileBitDepth = 24;
 
+std::vector<juce::String> TransportComponent::separationNames = {};
+std::vector<juce::String> TransportComponent::separationPaths = {};
+
 void TransportComponent::setSampleCount(int newSampleCount) {
   // Limita il valore di sampleCount alla lunghezza del file audio
   // auto maxSampleCount = static_cast<long>(readerSource->getTotalLength());
@@ -84,6 +87,16 @@ void TransportComponent::setFileBitDepth(unsigned int bitDepth)
 unsigned int TransportComponent::getFileBitDepth() 
 {
   return fileBitDepth;
+}
+void TransportComponent::deleteTempFiles() {
+  for (const auto& file : separationPaths) {
+    juce::File tempFile(file);
+    if (tempFile.exists()) {
+      tempFile.deleteFile();
+    }
+  }
+  separationNames = {};
+  separationPaths = {};
 }
 
 }  // namespace audio_plugin

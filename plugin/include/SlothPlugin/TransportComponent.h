@@ -36,6 +36,12 @@ public:
   static void setFileSampleRate(double sampleRate);
   static unsigned int getFileBitDepth();
   static void setFileBitDepth(unsigned int bitDepth);
+
+  static void deleteTempFiles();
+
+  static std::vector<juce::String> separationNames;
+  static std::vector<juce::String> separationPaths;
+
   juce::AudioBuffer<float>& getWaveform() {
     return waveform;
   };

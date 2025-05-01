@@ -18,9 +18,10 @@ void TransportSeparation::setSampleCount(int newSampleCount) {
       transport.start();
   }
 }
-void TransportSeparation::load(int indx) {
-  try {
-    waveform.clear();
+bool TransportSeparation::load(int indx) {
+  bool success = false;
+  waveform.clear();
+    try {
     stopFile();
     setSampleCount(0);
 
@@ -36,12 +37,21 @@ void TransportSeparation::load(int indx) {
     waveform.makeCopyOf(trackBuffers[indx]);
 
   
-    fileName = separationNames[indx];
+    fileName = TransportComponent::separationNames[indx];
+    success = true;
   } catch (const std::exception& e) {
     juce::Logger::writeToLog("Index out of range: " + juce::String(e.what()));
     fileName = "Unknown";
   }
+  return success;
+}
 
+void TransportSeparation::reset() {
+  waveform.setNotClear();
+  waveform.clear();
+  trackBuffers.clear();
+  separations.clear(); // Non so perché ce ne sono due... sono da unire, fanno la stessa cosa ma vengono chiamati in punti diversi
+  fileName = "";
 }
 
 

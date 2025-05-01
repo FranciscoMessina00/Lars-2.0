@@ -32,13 +32,12 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
   transportOriginal.formatManager.registerBasicFormats();
   transportSeparation.state = TransportComponent::TransportState::Stopped;
   transportOriginal.state = TransportComponent::TransportState::Stopped;
-  
-  setupLibTorch();
-
+ 
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {
   transportOriginal.formatReader = nullptr;
+  TransportComponent::deleteTempFiles();
 }
 
 //==============================================================================
@@ -201,6 +200,7 @@ void AudioPluginAudioProcessor::setStateInformation(const void* data,
 void AudioPluginAudioProcessor::process() {
   
   transportSeparation.separations.clear();  // Clear the separations vector
+  transportSeparation.trackBuffers.clear();  // Clear previous buffers
   torch::Tensor audioTensor = audioToTensor(transportOriginal.waveform);
 
   torch::jit::script::Module module;
@@ -213,7 +213,7 @@ void AudioPluginAudioProcessor::process() {
     // Se è Standalone, è l'eseguibile .exe
     // Vogliamo la cartella che lo contiene
     juce::File modelFile = pluginFile.getParentDirectory().getChildFile(
-        "mdx23c.pt");  // Nome del file modello
+        modelName);  // Nome del file modello
 
     juce::String modelPath = modelFile.getFullPathName();
     module = torch::jit::load(modelPath.toStdString());
@@ -221,7 +221,11 @@ void AudioPluginAudioProcessor::process() {
   } catch (const c10::Error& e) {
     /*juce::Logger::writeToLog("Error loading the model: " +
                              juce::String(e.what()));*/
-    errorBroadcaster.postError("Error loading the model:");
+    if (modelName == "") {
+      errorBroadcaster.postError("No model has been selected!");
+    } else {
+      errorBroadcaster.postError("Error loading the model: Model not found");
+    }
     return;
   }
 
@@ -294,7 +298,6 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
                            // modify it (like .contiguous())
 {
     // Initialize empty output
-
   // --- 1. Input Validation ---
 
   // Check if tensor is defined (not null/empty)
@@ -673,9 +676,10 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
 
 
 void AudioPluginAudioProcessor::saveSeparationIntoFile() {
-  transportSeparation.separationNames.clear();
-  transportSeparation.separationPaths.clear();
-  juce::File documentsDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+  TransportComponent::separationNames.clear();
+  TransportComponent::separationPaths.clear();
+  juce::File tempDir = juce::File::getSpecialLocation(juce::File::tempDirectory);
+  juce::Logger::writeToLog("Temp directory: " + tempDir.getFullPathName());
     // --- Direct Call Example ---
   double sampleRate = TransportComponent::getFileSampleRate(); 
   unsigned int bitDepth = TransportComponent::getFileBitDepth();
@@ -684,16 +688,16 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
     // Create a unique output file name for each track.
     juce::String fileName =
         transportOriginal.fileName + "_" + instruments[i];
-    juce::File outputFile = documentsDir.getChildFile(fileName + ".wav");
-    transportSeparation.separationNames.push_back(fileName);
-    transportSeparation.separationPaths.push_back(outputFile.getFullPathName());
-
+    juce::File outputFile = tempDir.getChildFile(fileName + ".wav");
+    TransportComponent::separationNames.push_back(fileName);
+    TransportComponent::separationPaths.push_back(outputFile.getFullPathName());
+    
     if (!transportSeparation.trackBuffers.empty()) {
       // Carica la prima traccia (es. kick drum) direttamente qui
       transportSeparation.load(
           0);  // Usa il sample rate del plugin
     }
-
+    juce::Logger::writeToLog("Pushed into array");
     // Attempt to save the current audio buffer into a WAV file.
     if (saveAudioBufferToWav(transportSeparation.separations[i], outputFile,
                              sampleRate,
@@ -702,33 +706,6 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
     } else {
       errorBroadcaster.postError("Failed to save: " + fileName);
     }
-  }
-}
-
-void AudioPluginAudioProcessor::setupLibTorch() {
-  // Ottieni la directory del plugin
-  juce::File pluginFile =
-      juce::File::getSpecialLocation(juce::File::currentExecutableFile);
-  juce::File pluginDir = pluginFile.getParentDirectory();
-  juce::String libTorchDllPath = pluginDir.getFullPathName();
-
-  // Converti il percorso in formato wide string richiesto da SetDllDirectoryW
-  const wchar_t* pathW = libTorchDllPath.toWideCharPointer();
-
-  // Imposta la directory di ricerca DLL per questo processo
-  // Windows cercherà in questa directory *prima* delle directory standard
-  if (SetDllDirectoryW(pathW)) {
-    juce::Logger::writeToLog(
-        "Impostata directory di ricerca DLL per LibTorch: " + libTorchDllPath);
-  } else {
-    // Ottieni l'errore di Windows
-    DWORD error = GetLastError();
-    juce::String errorMessage =
-        juce::String(
-            "Errore nell'impostare la directory di ricerca DLL (Codice: ") +
-        juce::String(error) + ")";
-    errorBroadcaster.postError(errorMessage);
-    // Potresti voler gestire questo errore in modo più robusto
   }
 }
 

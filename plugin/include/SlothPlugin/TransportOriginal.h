@@ -13,8 +13,8 @@ public:
       : TransportComponent(apvts, params, playButtonParamID) {}
   ~TransportOriginal() = default;
 
-  void load();
-  void load(const juce::String& path);
+  bool load();
+  bool load(const juce::String& path);
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TransportOriginal)
 
