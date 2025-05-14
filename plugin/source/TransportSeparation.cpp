@@ -47,8 +47,8 @@ bool TransportSeparation::load(int indx) {
 }
 
 void TransportSeparation::reset() {
-  waveform.setNotClear();
-  waveform.clear();
+  //waveform.setNotClear();
+  waveform = juce::AudioBuffer<float>();
   trackBuffers.clear();
   separations.clear(); // Non so perché ce ne sono due... sono da unire, fanno la stessa cosa ma vengono chiamati in punti diversi
   fileName = "";

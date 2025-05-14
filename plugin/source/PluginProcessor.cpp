@@ -26,13 +26,23 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
               ),
       params(apvts),
       transportOriginal(apvts, params),
-      transportSeparation(apvts, params)
+      transportSeparation(apvts, params),
+      mdx_1(130560,
+            4,
+            1,
+            std::optional<std::string>(std::nullopt),
+            std::vector<std::string>{"kick", "snare", "toms", "hh", "ride",
+                                     "crash"}),
+      mdx_2(130560,
+            4,
+            1,
+            std::optional<std::string>(std::nullopt),
+            std::vector<std::string>{"kick", "snare", "toms", "hihat", "cymbals"})
 #endif
 {
   transportOriginal.formatManager.registerBasicFormats();
   transportSeparation.state = TransportComponent::TransportState::Stopped;
   transportOriginal.state = TransportComponent::TransportState::Stopped;
- 
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {
@@ -204,6 +214,7 @@ void AudioPluginAudioProcessor::process() {
   torch::Tensor audioTensor = audioToTensor(transportOriginal.waveform);
 
   torch::jit::script::Module module;
+  chosen = mdx_map.at("mdx23c.pt");
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
     // Trova il percorso del plugin VST3 o Standalone
@@ -214,6 +225,8 @@ void AudioPluginAudioProcessor::process() {
     // Vogliamo la cartella che lo contiene
     juce::File modelFile = pluginFile.getParentDirectory().getChildFile(
         modelName);  // Nome del file modello
+    chosen = mdx_map.at(modelName.toStdString());
+    juce::Logger::writeToLog("Model: " + modelName);
 
     juce::String modelPath = modelFile.getFullPathName();
     module = torch::jit::load(modelPath.toStdString());
@@ -238,8 +251,9 @@ void AudioPluginAudioProcessor::process() {
   // * 2 - 1; Create a 2-channel (stereo) audio tensor
   torch::Tensor output;
   try {
-    instruments = {"kick", "snare", "toms", "hh",   "ride",  "crash"};
-    output = demix_track(130560, 4, 1, std::nullopt, instruments, module,
+    output = demix_track(chosen->chunk_size, chosen->num_overlap,
+                         chosen->batch_size, chosen->target_instrument,
+                         chosen->instruments, module,
                               audioTensor, torch::kCPU);
     // If the output is a tensor, convert it and use as needed
     auto sizes = output.sizes();
@@ -686,8 +700,9 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
 
   for (size_t i = 0; i < transportSeparation.separations.size(); ++i) {
     // Create a unique output file name for each track.
+    //chosen = mdx_map.at(modelName.toStdString());
     juce::String fileName =
-        transportOriginal.fileName + "_" + instruments[i];
+        transportOriginal.fileName + "_" + chosen->instruments[i];
     juce::File outputFile = tempDir.getChildFile(fileName + ".wav");
     TransportComponent::separationNames.push_back(fileName);
     TransportComponent::separationPaths.push_back(outputFile.getFullPathName());

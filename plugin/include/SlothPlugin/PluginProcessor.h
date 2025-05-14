@@ -40,6 +40,26 @@ private:
   }
 };
 
+struct modelParams {
+  double chunk_size;
+  int num_overlap;
+  int batch_size;
+  std::optional<std::string> target_instrument;
+  std::vector<std::string> instruments;
+
+  modelParams(double chunkSize,
+              int numOverlap,
+              int batchSize,
+              std::optional<std::string> targetInst = std::nullopt,
+              std::vector<std::string> instList = {})
+      : chunk_size(chunkSize),
+        num_overlap(numOverlap),
+        batch_size(batchSize),
+        target_instrument(targetInst),
+        instruments(instList) {}
+
+};
+
 class AudioPluginAudioProcessor : public juce::AudioProcessor {
 public:
   AudioPluginAudioProcessor();
@@ -92,9 +112,16 @@ public:
 
   ErrorBroadcaster errorBroadcaster;
 
-  std::vector<std::string> instruments;
+  modelParams* chosen = nullptr;
 
 private:
+  modelParams mdx_1;
+  modelParams mdx_2;
+  std::map<std::string, modelParams*> mdx_map = {
+      {"mdx23c.pt", &mdx_1},
+      {"mdx23c_capstone.pt", &mdx_2},
+  };
+  
 
   std::vector<juce::File> loadedFiles;
   int currentFileIndex = 0;

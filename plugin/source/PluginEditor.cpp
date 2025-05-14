@@ -28,28 +28,28 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   playButton2.setAlpha(0.3f);
 
   juce::StringArray items;
-  items.add("Mdx23c - 1");
-  items.add("Mdx23c - 2");
+  items.add("Mdx23c - Fast");
+  items.add("Mdx23c - Slow");
   trackSelector.addItemList(items, 1);
   trackSelector.setSelectedId(1, juce::dontSendNotification);
   trackSelector.onChange = [&]() {
     int selectedIndex = trackSelector.getSelectedItemIndex();
-    if (selectedIndex >= 0 && selectedIndex < items.size()) {
-      // Change the model that will be considered for the separation
-      juce::Logger::writeToLog("Selected model: " +
-                               trackSelector.getItemText(selectedIndex));
-      switch (selectedIndex) {
-        case 0:
-          audioProcessor.modelName = "mdx23c.pt";
-          break;
-        case 1:
-          audioProcessor.modelName = "mdx23c2.pt";
-          break;
-        default:
-          audioProcessor.modelName = "";
-          break;
-      }
+    juce::Logger::writeToLog("Selected index: " + juce::String(selectedIndex));
+    
+    switch (selectedIndex) {
+    case 0:
+        audioProcessor.modelName = "mdx23c.pt";
+      juce::Logger::writeToLog("Selected model: mdx23c.pt");
+        break;
+    case 1:
+        audioProcessor.modelName = "mdx23c_capstone.pt";
+      juce::Logger::writeToLog("Selected model: mdx23c_capstone.pt");
+        break;
+    default:
+        audioProcessor.modelName = "mdx23c.pt";
+        break;
     }
+    
   };
 
   loadButton.onClick = [&]() {
@@ -174,7 +174,7 @@ void AudioPluginAudioProcessorEditor::resized() {
   loadButton.setBounds(getWidth() / 2 - 25, 5, buttonWidth, buttonHeight);
   playButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
   divideButton.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
-  trackSelector.setBounds(25, 5, 40, 10);
+  trackSelector.setBounds(getWidth() / 10, 5, 120, 20);
   playButton2.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
   //tracks[tracks.size() - 1]->setBounds(getWidth() - buttonWidth - 15, 5, buttonWidth, buttonHeight);
   for (int i = tracks.size() - 1; i >= 0; --i) {
