@@ -60,7 +60,9 @@ struct modelParams {
 
 };
 
-class AudioPluginAudioProcessor : public juce::AudioProcessor {
+class AudioPluginAudioProcessor
+    : public juce::AudioProcessor,
+      public std::enable_shared_from_this<AudioPluginAudioProcessor> {
 public:
   AudioPluginAudioProcessor();
   ~AudioPluginAudioProcessor() override;
@@ -113,6 +115,16 @@ public:
   ErrorBroadcaster errorBroadcaster;
 
   modelParams* chosen = nullptr;
+  torch::Tensor outputTensor;
+
+  void handleInferenceResult(torch::Tensor result) {
+    outputTensor = std::move(result);
+    transportSeparation.separations =
+        tensorToAudio(outputTensor);  // Converti il tensore in AudioBuffer
+    saveSeparationIntoFile();         // Salva il risultato in un file WAV
+    juce::Logger::writeToLog("Separation completed and saved.");
+    //sendChangeMessage();
+  }
 
 private:
   modelParams mdx_1;
@@ -128,7 +140,7 @@ private:
 
   torch::Tensor audioToTensor(const juce::AudioBuffer<float>& buffer);
   std::vector<juce::AudioBuffer<float>> tensorToAudio(torch::Tensor tensor);
-  torch::Tensor demix_track(
+  /*void demix_track(
       double chunk_size,
       int num_overlap,
       int batch_size,
@@ -136,8 +148,9 @@ private:
       const std::vector<std::string>& instruments,
       torch::jit::Module& my_model,
       torch::Tensor mix,
-      torch::Device device
-  );
+      torch::Device device);*/
+  juce::ThreadPool threadPool;
+  
   bool saveAudioBufferToWav(juce::AudioBuffer<float>& bufferToSave,
                             juce::File& outputFile,
                             double sampleRate,
@@ -150,5 +163,56 @@ private:
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 
+};
+
+class SeparateThread : public juce::ThreadPoolJob {
+public:
+  SeparateThread(AudioPluginAudioProcessor* ownerIn,
+                 double chunk_size,
+                 int num_overlap,
+                 int batch_size,
+                 const std::optional<std::string> target_instrument,
+                 const std::vector<std::string> instruments,
+                 torch::jit::Module my_model,
+                 torch::Tensor mix,
+                 torch::Device device)
+      : juce::ThreadPoolJob("SeparationJobThread"),
+        owner_(ownerIn),
+        chunk_size(chunk_size),
+        num_overlap(num_overlap),
+        batch_size(batch_size),
+        target_instrument(target_instrument),
+        instruments(instruments),
+        my_model(my_model),
+        mix(mix),
+        device(device) {}
+
+  JobStatus runJob() override {
+    juce::Logger::writeToLog("Inside Thread");
+    JobStatus status = demix_track();
+
+    if (owner_) {
+      // move the result into the lambda so it outlives this scope
+      auto finalResult = std::move(outputTensor);
+      juce::MessageManager::callAsync(
+          [owner = owner_, finalResult = std::move(finalResult)]() mutable {
+            owner->handleInferenceResult(std::move(finalResult));
+          });
+    }
+    return status;
+  }
+
+private:
+  JobStatus demix_track();  // your long-running functions
+  AudioPluginAudioProcessor* owner_;
+  torch::Tensor outputTensor;
+  double chunk_size;
+  int num_overlap;
+  int batch_size;
+  const std::optional<std::string> target_instrument;
+  const std::vector<std::string> instruments;
+  torch::jit::Module my_model;
+  torch::Tensor mix;
+  torch::Device device;
 };
 }  // namespace audio_plugin

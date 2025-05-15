@@ -37,7 +37,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             4,
             1,
             std::optional<std::string>(std::nullopt),
-            std::vector<std::string>{"kick", "snare", "toms", "hihat", "cymbals"})
+            std::vector<std::string>{"kick", "snare", "toms", "hihat", "cymbals"}),
+      threadPool(1)
 #endif
 {
   transportOriginal.formatManager.registerBasicFormats();
@@ -48,6 +49,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {
   transportOriginal.formatReader = nullptr;
   TransportComponent::deleteTempFiles();
+  threadPool.removeAllJobs(/*interruptIfRunning=*/true,
+                           /*timeoutMilliseconds=*/2000);
 }
 
 //==============================================================================
@@ -242,44 +245,39 @@ void AudioPluginAudioProcessor::process() {
     return;
   }
 
-  juce::Logger::writeToLog("ok\n");
-
-  int num_samples = audioTensor.size(1);  // Get the number of samples
+  //int num_samples = audioTensor.size(1);  // Get the number of samples
 
   // Generate a random tensor with values in the range [-1, 1]
   // torch::Tensor audio_tensor = torch::rand({ num_samples }, torch::kFloat32)
   // * 2 - 1; Create a 2-channel (stereo) audio tensor
-  torch::Tensor output;
+  outputTensor = torch::Tensor();
   try {
-    output = demix_track(chosen->chunk_size, chosen->num_overlap,
+    /*demix_track(chosen->chunk_size, chosen->num_overlap,
                          chosen->batch_size, chosen->target_instrument,
                          chosen->instruments, module,
-                              audioTensor, torch::kCPU);
-    // If the output is a tensor, convert it and use as needed
-    auto sizes = output.sizes();
-    // Create a string representation of the sizes
-    juce::String sizeString = "Output Tensor sizes: [";
-    for (size_t i = 0; i < sizes.size(); ++i) {
-      sizeString += juce::String(sizes[i]);
-      if (i < sizes.size() - 1)
-        sizeString += ", ";
-    }
-    sizeString += "]";
+                              audioTensor, torch::kCPU);*/
 
-    // Log the size information
-    juce::Logger::writeToLog(
-        sizeString +
-        " Type of output: " + juce::String(c10::toString(output.scalar_type())));
+    // create the job, passing a weak_ptr
+    auto* job = new SeparateThread(
+        this,
+        chosen->chunk_size,
+        chosen->num_overlap,
+        chosen->batch_size,
+        chosen->target_instrument,
+        chosen->instruments,
+        module,
+        std::move(audioTensor),
+        torch::kCPU);
 
+    threadPool.addJob(job, /*deleteWhenFinished=*/true);
   } catch (std::exception e) {
-    errorBroadcaster.postError("Error in the demixing part");
+    errorBroadcaster.postError("Error in the demixing part: " + juce::String(e.what()));
     return;
   }
 
-  transportSeparation.separations =
-      tensorToAudio(output);  // Converti il tensore in AudioBuffer
-  juce::Logger::writeToLog("Converted to AudioBuffer");
-  saveSeparationIntoFile();        // Salva il risultato in un file WAV
+  //transportSeparation.separations =
+  //    tensorToAudio(outputTensor);  // Converti il tensore in AudioBuffer
+  //saveSeparationIntoFile();        // Salva il risultato in un file WAV
 }
 
 torch::Tensor AudioPluginAudioProcessor::audioToTensor(const juce::AudioBuffer<float>& buffer) {
@@ -489,122 +487,122 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
   return transportSeparation.trackBuffers;
 }
 
-torch::Tensor AudioPluginAudioProcessor::demix_track(
-    double chunk_size,  // C in your code (as a float/double)
-    int num_overlap,    // N
-    int batch_size,
-    const std::optional<std::string>&
-        target_instrument,  // if provided, demix only one instrument
-    const std::vector<std::string>& instruments,  // list of instruments
-    torch::jit::Module& my_model,                 // your loaded model
-    torch::Tensor mix,  // mix tensor, shape: [channels, samples]
-    torch::Device device) {
-  // Calculate parameters
-  double C = chunk_size;
-  int N = num_overlap;
-  int step = static_cast<int>(C / N);  // integer division
-  int border = static_cast<int>(C) - step;
-  torch::Tensor estimated_sources;
-  // Remember the original length (assumed along dimension 1)
-  int length_init = mix.size(1);
-
-  if ((length_init > 2 * border) && (border > 0)) {
-    mix = torch::nn::functional::pad(
-        mix, torch::nn::functional::PadFuncOptions({border, border})
-                 .mode(torch::kReflect));
-  }
-
-  {
-    torch::NoGradGuard no_grad;
-    std::vector<int64_t> req_shape;
-    if (target_instrument.has_value()) {  // Check if target_instrument is set
-      req_shape = {1, mix.size(0), mix.size(1)};
-    } else {
-      req_shape = {static_cast<int64_t>(instruments.size()), mix.size(0),
-                   mix.size(1)};
-    }
-    mix = mix.to(device);
-
-    auto result = torch::zeros(req_shape, torch::kFloat32)
-                      .to(device);  // Initialize result tensor
-    auto counter = torch::zeros(req_shape, torch::kFloat32).to(device);
-
-    std::vector<torch::Tensor> batch_data;  // Vector to store tensors
-    std::vector<std::pair<int, int>>
-        batch_locations;  // Vector to store (int, int) pairs
-
-    int i = 0;
-    estimated_sources = torch::zeros(req_shape, torch::kFloat32).to(device);
-    juce::Logger::writeToLog("Entering elaboration loop\n");
-    while (i < mix.size(1)) {
-      torch::Tensor part =
-          mix.index({Slice(), Slice(i, i + static_cast<int>(C))});
-      int length = part.size(1);
-      if (length < C) {
-        if (length > 1 + static_cast<int>(C / 2)) {
-          part = torch::nn::functional::pad(
-              part, torch::nn::functional::PadFuncOptions(
-                        {0, static_cast<int>(C) - length})
-                        .mode(torch::kReflect));
-        } else {
-          part = torch::nn::functional::pad(
-              part, torch::nn::functional::PadFuncOptions(
-                        {0, static_cast<int>(C) - length, 0, 0})
-                        .mode(torch::kConstant)
-                        .value(0.0));
-        }
-      }
-      batch_data.push_back(part);
-      batch_locations.push_back({i, length});
-      i += step;
-
-      if ((batch_data.size() >= batch_size) || (i >= mix.size(1))) {
-        auto arr = torch::stack(batch_data);
-        torch::Tensor x = my_model.forward({arr}).toTensor();
-        for (int j = 0; j < batch_locations.size(); j++) {
-          int start = batch_locations[j].first;
-          int l = batch_locations[j].second;
-
-          // result[..., start:start+l] += x[j][..., :l]
-          result.index_put_({Ellipsis, Slice(start, start + l)},
-                            result.index({Ellipsis, Slice(start, start + l)}) +
-                                x.index({j, Ellipsis, Slice(0, l)}));
-
-          // counter[..., start:start+l] += 1.
-          counter.index_put_(
-              {Ellipsis, Slice(start, start + l)},
-              counter.index({Ellipsis, Slice(start, start + l)}) + 1.0);
-        }
-
-        // Reset batch_data and batch_locations
-        batch_data.clear();
-        batch_locations.clear();
-      }
-
-      //estimated_sources = result / counter;
-    }
-
-    // Avoid division by zero where counter is still zero
-    counter.masked_fill_(counter == 0.0,
-                         1e-8);  // Or add a small epsilon everywhere
-    estimated_sources = result / counter;
-
-    // --- Handle NaNs (using the corrected method) ---
-    torch::Tensor nan_mask = estimated_sources.isnan();
-    estimated_sources.masked_fill_(nan_mask, 0.0);
-  }
-
-  //estimated_sources =
-  //    estimated_sources.isnan().masked_fill(estimated_sources.isnan(), 0.0);
-
-  // Remove padding if the conditions are met
-  if (length_init > 2 * border && border > 0) {
-    estimated_sources = estimated_sources.index(
-        {Slice(), Slice(), Slice(border, length_init + border)});
-  }
-
-  return estimated_sources;
-}
+//void AudioPluginAudioProcessor::demix_track(
+//    double chunk_size,  // C in your code (as a float/double)
+//    int num_overlap,    // N
+//    int batch_size,
+//    const std::optional<std::string>&
+//        target_instrument,  // if provided, demix only one instrument
+//    const std::vector<std::string>& instruments,  // list of instruments
+//    torch::jit::Module& my_model,                 // your loaded model
+//    torch::Tensor mix,  // mix tensor, shape: [channels, samples]
+//    torch::Device device) {
+//  // Calculate parameters
+//  double C = chunk_size;
+//  int N = num_overlap;
+//  int step = static_cast<int>(C / N);  // integer division
+//  int border = static_cast<int>(C) - step;
+//  torch::Tensor estimated_sources;
+//  // Remember the original length (assumed along dimension 1)
+//  int length_init = mix.size(1);
+//
+//  if ((length_init > 2 * border) && (border > 0)) {
+//    mix = torch::nn::functional::pad(
+//        mix, torch::nn::functional::PadFuncOptions({border, border})
+//                 .mode(torch::kReflect));
+//  }
+//
+//  {
+//    torch::NoGradGuard no_grad;
+//    std::vector<int64_t> req_shape;
+//    if (target_instrument.has_value()) {  // Check if target_instrument is set
+//      req_shape = {1, mix.size(0), mix.size(1)};
+//    } else {
+//      req_shape = {static_cast<int64_t>(instruments.size()), mix.size(0),
+//                   mix.size(1)};
+//    }
+//    mix = mix.to(device);
+//
+//    auto result = torch::zeros(req_shape, torch::kFloat32)
+//                      .to(device);  // Initialize result tensor
+//    auto counter = torch::zeros(req_shape, torch::kFloat32).to(device);
+//
+//    std::vector<torch::Tensor> batch_data;  // Vector to store tensors
+//    std::vector<std::pair<int, int>>
+//        batch_locations;  // Vector to store (int, int) pairs
+//
+//    int i = 0;
+//    estimated_sources = torch::zeros(req_shape, torch::kFloat32).to(device);
+//    juce::Logger::writeToLog("Entering elaboration loop\n");
+//    while (i < mix.size(1)) {
+//      torch::Tensor part =
+//          mix.index({Slice(), Slice(i, i + static_cast<int>(C))});
+//      int length = part.size(1);
+//      if (length < C) {
+//        if (length > 1 + static_cast<int>(C / 2)) {
+//          part = torch::nn::functional::pad(
+//              part, torch::nn::functional::PadFuncOptions(
+//                        {0, static_cast<int>(C) - length})
+//                        .mode(torch::kReflect));
+//        } else {
+//          part = torch::nn::functional::pad(
+//              part, torch::nn::functional::PadFuncOptions(
+//                        {0, static_cast<int>(C) - length, 0, 0})
+//                        .mode(torch::kConstant)
+//                        .value(0.0));
+//        }
+//      }
+//      batch_data.push_back(part);
+//      batch_locations.push_back({i, length});
+//      i += step;
+//
+//      if ((batch_data.size() >= batch_size) || (i >= mix.size(1))) {
+//        auto arr = torch::stack(batch_data);
+//        torch::Tensor x = my_model.forward({arr}).toTensor();
+//        for (int j = 0; j < batch_locations.size(); j++) {
+//          int start = batch_locations[j].first;
+//          int l = batch_locations[j].second;
+//
+//          // result[..., start:start+l] += x[j][..., :l]
+//          result.index_put_({Ellipsis, Slice(start, start + l)},
+//                            result.index({Ellipsis, Slice(start, start + l)}) +
+//                                x.index({j, Ellipsis, Slice(0, l)}));
+//
+//          // counter[..., start:start+l] += 1.
+//          counter.index_put_(
+//              {Ellipsis, Slice(start, start + l)},
+//              counter.index({Ellipsis, Slice(start, start + l)}) + 1.0);
+//        }
+//
+//        // Reset batch_data and batch_locations
+//        batch_data.clear();
+//        batch_locations.clear();
+//      }
+//
+//      //estimated_sources = result / counter;
+//    }
+//
+//    // Avoid division by zero where counter is still zero
+//    counter.masked_fill_(counter == 0.0,
+//                         1e-8);  // Or add a small epsilon everywhere
+//    estimated_sources = result / counter;
+//
+//    // --- Handle NaNs (using the corrected method) ---
+//    torch::Tensor nan_mask = estimated_sources.isnan();
+//    estimated_sources.masked_fill_(nan_mask, 0.0);
+//  }
+//
+//  //estimated_sources =
+//  //    estimated_sources.isnan().masked_fill(estimated_sources.isnan(), 0.0);
+//
+//  // Remove padding if the conditions are met
+//  if (length_init > 2 * border && border > 0) {
+//    estimated_sources = estimated_sources.index(
+//        {Slice(), Slice(), Slice(border, length_init + border)});
+//  }
+//
+//  outputTensor = estimated_sources;
+//}
 
 bool AudioPluginAudioProcessor::saveAudioBufferToWav(
     juce::AudioBuffer<float>& bufferToSave,
@@ -723,6 +721,123 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
     }
   }
 }
+
+juce::ThreadPoolJob::JobStatus SeparateThread::demix_track() {
+  // Calculate parameters
+  double C = chunk_size;
+  int N = num_overlap;
+  int step = static_cast<int>(C / N);  // integer division
+  int border = static_cast<int>(C) - step;
+  torch::Tensor estimated_sources;
+  // Remember the original length (assumed along dimension 1)
+  int length_init = mix.size(1);
+
+  if ((length_init > 2 * border) && (border > 0)) {
+    mix = torch::nn::functional::pad(
+        mix, torch::nn::functional::PadFuncOptions({border, border})
+                 .mode(torch::kReflect));
+  }
+
+  {
+    torch::NoGradGuard no_grad;
+    std::vector<int64_t> req_shape;
+    if (target_instrument.has_value()) {  // Check if target_instrument is set
+      req_shape = {1, mix.size(0), mix.size(1)};
+    } else {
+      req_shape = {static_cast<int64_t>(instruments.size()), mix.size(0),
+                   mix.size(1)};
+    }
+    mix = mix.to(device);
+
+    auto result = torch::zeros(req_shape, torch::kFloat32)
+                      .to(device);  // Initialize result tensor
+    auto counter = torch::zeros(req_shape, torch::kFloat32).to(device);
+
+    std::vector<torch::Tensor> batch_data;  // Vector to store tensors
+    std::vector<std::pair<int, int>>
+        batch_locations;  // Vector to store (int, int) pairs
+
+    int i = 0;
+    estimated_sources = torch::zeros(req_shape, torch::kFloat32).to(device);
+    juce::Logger::writeToLog("Entering elaboration loop\n");
+    while (i < mix.size(1)) {
+      // put part of interrupting the thread
+      if (shouldExit())
+        return jobHasFinished;
+
+      torch::Tensor part =
+          mix.index({Slice(), Slice(i, i + static_cast<int>(C))});
+      int length = part.size(1);
+      if (length < C) {
+        if (length > 1 + static_cast<int>(C / 2)) {
+          part = torch::nn::functional::pad(
+              part, torch::nn::functional::PadFuncOptions(
+                        {0, static_cast<int>(C) - length})
+                        .mode(torch::kReflect));
+        } else {
+          part = torch::nn::functional::pad(
+              part, torch::nn::functional::PadFuncOptions(
+                        {0, static_cast<int>(C) - length, 0, 0})
+                        .mode(torch::kConstant)
+                        .value(0.0));
+        }
+      }
+      batch_data.push_back(part);
+      batch_locations.push_back({i, length});
+      i += step;
+
+      if ((batch_data.size() >= batch_size) || (i >= mix.size(1))) {
+        auto arr = torch::stack(batch_data);
+        torch::Tensor x = my_model.forward({arr}).toTensor();
+        for (int j = 0; j < batch_locations.size(); j++) {
+          int start = batch_locations[j].first;
+          int l = batch_locations[j].second;
+
+          // result[..., start:start+l] += x[j][..., :l]
+          result.index_put_({Ellipsis, Slice(start, start + l)},
+                            result.index({Ellipsis, Slice(start, start + l)}) +
+                                x.index({j, Ellipsis, Slice(0, l)}));
+
+          // counter[..., start:start+l] += 1.
+          counter.index_put_(
+              {Ellipsis, Slice(start, start + l)},
+              counter.index({Ellipsis, Slice(start, start + l)}) + 1.0);
+        }
+
+        // Reset batch_data and batch_locations
+        batch_data.clear();
+        batch_locations.clear();
+      }
+
+      // estimated_sources = result / counter;
+    }
+
+    // Avoid division by zero where counter is still zero
+    counter.masked_fill_(counter == 0.0,
+                         1e-8);  // Or add a small epsilon everywhere
+    estimated_sources = result / counter;
+
+    // --- Handle NaNs (using the corrected method) ---
+    torch::Tensor nan_mask = estimated_sources.isnan();
+    estimated_sources.masked_fill_(nan_mask, 0.0);
+  }
+
+  // estimated_sources =
+  //     estimated_sources.isnan().masked_fill(estimated_sources.isnan(), 0.0);
+
+  // Remove padding if the conditions are met
+  if (length_init > 2 * border && border > 0) {
+    estimated_sources = estimated_sources.index(
+        {Slice(), Slice(), Slice(border, length_init + border)});
+  }
+
+  outputTensor = estimated_sources;
+
+  return jobHasFinished;
+}
+
+
+
 
 
 //void AudioPluginAudioProcessor::loadFileAtIndex(int index, int section) {

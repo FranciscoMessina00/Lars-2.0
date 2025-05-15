@@ -39,11 +39,13 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     switch (selectedIndex) {
     case 0:
         audioProcessor.modelName = "mdx23c.pt";
-      juce::Logger::writeToLog("Selected model: mdx23c.pt");
+        setTrackButtons(6);
+        juce::Logger::writeToLog("Selected model: mdx23c.pt");
         break;
     case 1:
         audioProcessor.modelName = "mdx23c_capstone.pt";
-      juce::Logger::writeToLog("Selected model: mdx23c_capstone.pt");
+        setTrackButtons(5);
+        juce::Logger::writeToLog("Selected model: mdx23c_capstone.pt");
         break;
     default:
         audioProcessor.modelName = "mdx23c.pt";
@@ -121,18 +123,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   second.addAndMakeVisible(separation);
   second.addAndMakeVisible(playButton2);
 
-  for (int i = 0; i < 6; i++) {
-    tracks.push_back(std::make_unique<juce::TextButton>(juce::String(i + 1)));
-    tracks[i]->onClick = [this, i] {
-      if (i < audioProcessor.transportSeparation.getSeparatedTracks().size()) {
-        audioProcessor.transportSeparation.load(i);
-      }
-    };
-    tracks[i]->setAlpha(0.3f);
-    tracks[i]->setEnabled(true);
-    tracks[i]->setMouseCursor(juce::MouseCursor::DraggingHandCursor);
-    second.addAndMakeVisible(tracks[i].get());
-  }
+  setTrackButtons(6);
   
 
   addAndMakeVisible(full);
@@ -389,6 +380,24 @@ void AudioPluginAudioProcessorEditor::mouseUp(const juce::MouseEvent& event) {
     // modificato durante il drag
   }
   // Gestisci altri eventi mouseUp se necessario
+}
+
+void AudioPluginAudioProcessorEditor::setTrackButtons(int length) {
+    tracks.clear();
+
+    for (int i = 0; i < length; i++) {
+        tracks.push_back(std::make_unique<juce::TextButton>(juce::String(i + 1)));
+        tracks[i]->onClick = [this, i] {
+          if (i < audioProcessor.transportSeparation.getSeparatedTracks().size()) {
+            audioProcessor.transportSeparation.load(i);
+          }
+        };
+        tracks[i]->setAlpha(0.3f);
+        tracks[i]->setEnabled(true);
+        tracks[i]->setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+        second.addAndMakeVisible(tracks[i].get());
+    }
+    resized();
 }
 
 

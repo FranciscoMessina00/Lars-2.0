@@ -53,7 +53,7 @@ private:
     juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                                            "Plugin Error", message);
   }
-
+  void setTrackButtons(int length);
   void parameterValueChanged(int idx, float value) override;
   void parameterGestureChanged(int, bool) override {}
 
