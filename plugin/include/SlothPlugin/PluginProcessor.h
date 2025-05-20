@@ -23,10 +23,10 @@ using namespace torch::indexing;
 //#include <juce_header/JuceHeader.h>
 
 namespace audio_plugin {
-struct ErrorBroadcaster : private juce::AsyncUpdater,
+struct EventBroadcaster : private juce::AsyncUpdater,
                           public juce::ActionBroadcaster {
   // called on audio thread
-  void postError(const juce::String& e) {
+  void post(const juce::String& e) {
     lastMessage = e;
     triggerAsyncUpdate();
   }
@@ -112,7 +112,7 @@ public:
   TransportOriginal transportOriginal;
   TransportSeparation transportSeparation;
 
-  ErrorBroadcaster errorBroadcaster;
+  EventBroadcaster eventBroadcaster;
 
   modelParams* chosen = nullptr;
   torch::Tensor outputTensor;
@@ -197,6 +197,7 @@ public:
       juce::MessageManager::callAsync(
           [owner = owner_, finalResult = std::move(finalResult)]() mutable {
             owner->handleInferenceResult(std::move(finalResult));
+            owner->eventBroadcaster.post("Demix finished");
           });
     }
     return status;

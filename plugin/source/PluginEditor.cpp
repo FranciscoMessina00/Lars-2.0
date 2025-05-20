@@ -100,9 +100,14 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
 
 
 
-  divideButton.onClick = [&]() { 
+  divideButton.onClick = [&]() {
+      original.setMouseCursor(juce::MouseCursor::WaitCursor);
+      separation.setMouseCursor(juce::MouseCursor::WaitCursor);
+      loadButton.setEnabled(false);
+      playButton2.setEnabled(false);
+      divideButton.setEnabled(false);
+      audioProcessor.transportSeparation.reset();
       audioProcessor.process();
-      playButton2.setEnabled(true);
   };
 
   full.setColour(juce::GroupComponent::outlineColourId,
@@ -135,14 +140,14 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
 
   audioProcessor.params.playButtonParam->addListener(this);
   audioProcessor.params.playButton2Param->addListener(this);
-  audioProcessor.errorBroadcaster.addActionListener(this);
+  audioProcessor.eventBroadcaster.addActionListener(this);
   addMouseListener(this, true);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor() {
   audioProcessor.params.playButtonParam->removeListener(this);
   audioProcessor.params.playButton2Param->removeListener(this);
-  audioProcessor.errorBroadcaster.removeActionListener(this);
+  audioProcessor.eventBroadcaster.removeActionListener(this);
   removeMouseListener(this);
   stopTimer();
 }
@@ -207,6 +212,19 @@ void AudioPluginAudioProcessorEditor::parameterValueChanged(int idx,
     default:
       break;
   }
+}
+
+void AudioPluginAudioProcessorEditor::actionListenerCallback(const juce::String& message) {
+    if (message.startsWith("Error:")) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                "Plugin Error", message);
+    } else if (message.startsWith("Demix finished")) {
+        loadButton.setEnabled(true);
+        playButton2.setEnabled(true);
+        divideButton.setEnabled(true);
+        original.setMouseCursor(juce::MouseCursor::NormalCursor);
+        separation.setMouseCursor(juce::MouseCursor::NormalCursor);
+    }
 }
 
 void AudioPluginAudioProcessorEditor::updateTransportButtons(int sourceIndex, bool isPlaying) {

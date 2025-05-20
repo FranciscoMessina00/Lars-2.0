@@ -49,10 +49,7 @@ private:
   void mouseExit(const juce::MouseEvent& event);
   void mouseDrag(const juce::MouseEvent& event) override;
   void mouseUp(const juce::MouseEvent& event);
-  void actionListenerCallback(const juce::String& message) override {
-    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                           "Plugin Error", message);
-  }
+  void actionListenerCallback(const juce::String& message) override;
   void setTrackButtons(int length);
   void parameterValueChanged(int idx, float value) override;
   void parameterGestureChanged(int, bool) override {}
