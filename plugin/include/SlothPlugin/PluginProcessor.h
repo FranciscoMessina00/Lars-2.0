@@ -119,21 +119,34 @@ public:
 
   void handleInferenceResult(torch::Tensor result) {
     outputTensor = std::move(result);
-    transportSeparation.separations =
-        tensorToAudio(outputTensor);  // Converti il tensore in AudioBuffer
-    saveSeparationIntoFile();         // Salva il risultato in un file WAV
+    if(!doubleSeparation){
+      transportSeparation.separations =
+          tensorToAudio(outputTensor);  // Converti il tensore in AudioBuffer
+      saveSeparationIntoFile();         // Salva il risultato in un file WAV
+    } else {
+      modelName = "mdx23c.pt";
+      std::vector<juce::AudioBuffer<float>> separatedTracks =
+          tensorToAudio(outputTensor);  // Converti il tensore in AudioBuffer
+      drumBuffer = separatedTracks[2];
+      juce::Logger::writeToLog("First part done, separating drums");
+      process();
+      return;
+    }
     juce::Logger::writeToLog("Separation completed and saved.");
     //sendChangeMessage();
   }
-
+  bool doubleSeparation = false;
 private:
   modelParams mdx_1;
   modelParams mdx_2;
+  modelParams mdx_3;
   std::map<std::string, modelParams*> mdx_map = {
       {"mdx23c.pt", &mdx_1},
       {"mdx23c_capstone.pt", &mdx_2},
+      {"mdx23c_inst_sep.pt", &mdx_3}
   };
   
+  juce::AudioBuffer<float> drumBuffer;
 
   std::vector<juce::File> loadedFiles;
   int currentFileIndex = 0;
@@ -196,8 +209,10 @@ public:
       auto finalResult = std::move(outputTensor);
       juce::MessageManager::callAsync(
           [owner = owner_, finalResult = std::move(finalResult)]() mutable {
+            if (!owner->doubleSeparation) {
+              owner->eventBroadcaster.post("Demix finished");
+            }
             owner->handleInferenceResult(std::move(finalResult));
-            owner->eventBroadcaster.post("Demix finished");
           });
     }
     return status;

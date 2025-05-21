@@ -38,6 +38,11 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
             1,
             std::optional<std::string>(std::nullopt),
             std::vector<std::string>{"kick", "snare", "toms", "hihat", "cymbals"}),
+      mdx_3(261120,
+            4,
+            1,
+            std::optional<std::string>(std::nullopt),
+            std::vector<std::string>{"vocals", "bass", "drums", "other"}),
       threadPool(1)
 #endif
 {
@@ -214,10 +219,22 @@ void AudioPluginAudioProcessor::process() {
   
   transportSeparation.separations.clear();  // Clear the separations vector
   transportSeparation.trackBuffers.clear();  // Clear previous buffers
-  torch::Tensor audioTensor = audioToTensor(transportOriginal.waveform);
+  torch::Tensor audioTensor;
+  
+  if (doubleSeparation) {
+    audioTensor = audioToTensor(drumBuffer);
+    doubleSeparation = false;
+  } else {
+    audioTensor = audioToTensor(transportOriginal.waveform);
+  }
+
+  if (modelName.toStdString() == "mdx23c_inst_sep.pt") {
+    doubleSeparation = true;
+    juce::Logger::writeToLog("Doing double separation");
+  }
 
   torch::jit::script::Module module;
-  chosen = mdx_map.at("mdx23c.pt");
+  //chosen = mdx_map.at("mdx23c.pt");
   try {
     // Deserialize the ScriptModule from a file using torch::jit::load().
     // Trova il percorso del plugin VST3 o Standalone

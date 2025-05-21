@@ -30,6 +30,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   juce::StringArray items;
   items.add("Mdx23c - Fast");
   items.add("Mdx23c - Slow");
+  items.add("Mdx23c - Music drum sep");
   trackSelector.addItemList(items, 1);
   trackSelector.setSelectedId(1, juce::dontSendNotification);
   trackSelector.onChange = [&]() {
@@ -46,6 +47,11 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
         audioProcessor.modelName = "mdx23c_capstone.pt";
         setTrackButtons(5);
         juce::Logger::writeToLog("Selected model: mdx23c_capstone.pt");
+        break;
+    case 2:
+        audioProcessor.modelName = "mdx23c_inst_sep.pt";
+        setTrackButtons(6);
+        juce::Logger::writeToLog("Selected model: mdx23c_inst_sep.pt");
         break;
     default:
         audioProcessor.modelName = "mdx23c.pt";
