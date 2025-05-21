@@ -133,9 +133,17 @@ public:
       return;
     }
     juce::Logger::writeToLog("Separation completed and saved.");
+<<<<<<< Updated upstream
     //sendChangeMessage();
   }
   bool doubleSeparation = false;
+=======
+    // sendChangeMessage();
+  };
+
+  void saveSeparatedTracks(const juce::File& selectedFolder);
+
+>>>>>>> Stashed changes
 private:
   modelParams mdx_1;
   modelParams mdx_2;

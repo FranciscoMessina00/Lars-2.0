@@ -26,6 +26,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   loadButton.setAlpha(0.3f);
   divideButton.setAlpha(0.3f);
   playButton2.setAlpha(0.3f);
+  saveButton.setAlpha(0.3f);
 
   juce::StringArray items;
   items.add("Mdx23c - Fast");
@@ -113,6 +114,17 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
       audioProcessor.process();
   };
 
+  saveButton.onClick = [&]() {
+    juce::FileChooser fileChooser("Select a folder to save separated tracks");
+
+    if (fileChooser.browseForDirectory()) {
+      auto selectedFolder = fileChooser.getResult();
+
+      // Chiamata al processor per salvare
+      audioProcessor.saveSeparatedTracks(selectedFolder);
+    }
+  };
+
   full.setColour(juce::GroupComponent::outlineColourId,
                  juce::Colours::transparentBlack);
   second.setColour(juce::GroupComponent::outlineColourId,
@@ -121,6 +133,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   playButton.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
   playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
   playButton2.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
+  saveButton.setColour(juce::TextButton::buttonColourId, juce::Colours::yellow);
   playButton2.setEnabled(audioProcessor.transportSeparation.isFileLoaded());
   divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
   full.addAndMakeVisible(original);
@@ -130,6 +143,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   full.addAndMakeVisible(trackSelector);
   second.addAndMakeVisible(separation);
   second.addAndMakeVisible(playButton2);
+  second.addAndMakeVisible(saveButton);
 
   setTrackButtons(6);
   
@@ -175,6 +189,7 @@ void AudioPluginAudioProcessorEditor::resized() {
   divideButton.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
   trackSelector.setBounds(getWidth() / 10, 5, 120, 20);
   playButton2.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
+  saveButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
   //tracks[tracks.size() - 1]->setBounds(getWidth() - buttonWidth - 15, 5, buttonWidth, buttonHeight);
   for (int i = tracks.size() - 1; i >= 0; --i) {
     tracks[i]->setBounds(
@@ -283,7 +298,8 @@ void AudioPluginAudioProcessorEditor::mouseEnter(const juce::MouseEvent& event) 
     if (event.eventComponent == &loadButton ||
         event.eventComponent == &playButton ||
         event.eventComponent == &divideButton ||
-        event.eventComponent == &playButton2) 
+        event.eventComponent == &playButton2 ||
+        event.eventComponent == &saveButton) 
     {
         event.eventComponent->setAlpha(1.0f);
         event.eventComponent->repaint();
@@ -308,7 +324,8 @@ void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
     if (event.eventComponent == &loadButton ||
         event.eventComponent == &playButton ||
         event.eventComponent == &divideButton ||
-        event.eventComponent == &playButton2) 
+        event.eventComponent == &playButton2 ||
+        event.eventComponent == &saveButton) 
     {
         event.eventComponent->setAlpha(0.3f);
         event.eventComponent->repaint();

@@ -855,6 +855,32 @@ juce::ThreadPoolJob::JobStatus SeparateThread::demix_track() {
 }
 
 
+void AudioPluginAudioProcessor::saveSeparatedTracks(
+    const juce::File& selectedFolder) {
+  if (selectedFolder.isDirectory()) {
+    for (size_t i = 0; i < transportSeparation.trackBuffers.size(); ++i) {
+      juce::File trackFile =
+          selectedFolder.getChildFile("Track_" + juce::String(i + 1) + ".wav");
+      juce::FileOutputStream outputStream(trackFile);
+
+      if (outputStream.openedOk()) {
+        juce::WavAudioFormat wavFormat;
+        auto writer = wavFormat.createWriterFor(
+            &outputStream, getSampleRate(),
+            (unsigned int)transportSeparation.trackBuffers[i].getNumChannels(),
+            16, {}, 0);
+
+        if (writer != nullptr) {
+          writer->writeFromAudioSampleBuffer(
+              transportSeparation.trackBuffers[i], 0,
+              transportSeparation.trackBuffers[i].getNumSamples());
+        }
+      }
+    }
+  }
+}
+
+
 
 
 
