@@ -40,17 +40,14 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     switch (selectedIndex) {
     case 0:
         audioProcessor.modelName = "mdx23c.pt";
-        setTrackButtons(6);
         juce::Logger::writeToLog("Selected model: mdx23c.pt");
         break;
     case 1:
         audioProcessor.modelName = "mdx23c_capstone.pt";
-        setTrackButtons(5);
         juce::Logger::writeToLog("Selected model: mdx23c_capstone.pt");
         break;
     case 2:
         audioProcessor.modelName = "mdx23c_inst_sep.pt";
-        setTrackButtons(6);
         juce::Logger::writeToLog("Selected model: mdx23c_inst_sep.pt");
         break;
     default:
@@ -230,6 +227,7 @@ void AudioPluginAudioProcessorEditor::actionListenerCallback(const juce::String&
         divideButton.setEnabled(true);
         original.setMouseCursor(juce::MouseCursor::NormalCursor);
         separation.setMouseCursor(juce::MouseCursor::NormalCursor);
+        setTrackButtons(audioProcessor.transportSeparation.trackBuffers.size());
     }
 }
 
