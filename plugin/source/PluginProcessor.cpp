@@ -218,7 +218,6 @@ void AudioPluginAudioProcessor::setStateInformation(const void* data,
 void AudioPluginAudioProcessor::process() {
   
   transportSeparation.separations.clear();  // Clear the separations vector
-  transportSeparation.trackBuffers.clear();  // Clear previous buffers
   torch::Tensor audioTensor;
   
   if (doubleSeparation) {
@@ -336,7 +335,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         "Error: tensorToAudio received an undefined tensor.");
     // DBG("Error: tensorToAudio received an undefined tensor.");
 
-    return transportSeparation.trackBuffers;  // Return empty vector
+    return transportSeparation.separations;  // Return empty vector
   }
 
   // Check if tensor is on CPU, move if necessary
@@ -352,7 +351,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
       eventBroadcaster.post("Error: error moving tensor to CPU: " +
                                juce::String(e.what()));
       // DBG("Error moving tensor to CPU: " + juce::String(e.what()));
-      return transportSeparation.trackBuffers;  // Cannot proceed
+      return transportSeparation.separations;  // Cannot proceed
     }
   }
 
@@ -366,7 +365,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     // Optionally, you could try converting it: tensor =
     // tensor.to(torch::kFloat); But it's often better to enforce the correct
     // type upstream.
-    return transportSeparation.trackBuffers;
+    return transportSeparation.separations;
   }
 
   // Check dimensions - MUST be 3D
@@ -383,7 +382,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         "NchannelsPerTrack, NumSamples]). Actual shape: " +
         juce::String(ss.str()));
     // DBG(...); // Debug version
-    return transportSeparation.trackBuffers;
+    return transportSeparation.separations;
   }
 
   // --- 2. Ensure Contiguity ---
@@ -400,7 +399,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     eventBroadcaster.post("Error: error making tensor contiguous: " +
                              juce::String(e.what()));
     // DBG("Error making tensor contiguous: " + juce::String(e.what()));
-    return transportSeparation.trackBuffers;
+    return transportSeparation.separations;
   }
 
   // --- 3. Get Dimensions (Safer now after checks) ---
@@ -413,7 +412,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
     eventBroadcaster.post(
         "Error: Tensor dimensions are negative. This should not happen.");
     // DBG("Error: Tensor dimensions are negative.");
-    return transportSeparation.trackBuffers;
+    return transportSeparation.separations;
   }
   // Handle case where there's nothing to process
   if (numTracks == 0 || channelsPerTrack == 0) {
@@ -421,7 +420,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         "Info: Tensor has 0 tracks or 0 channels per track. Returning empty "
         "buffer list.");
     // DBG("Info: Tensor has 0 tracks or 0 channels per track.");
-    return transportSeparation.trackBuffers;  // Nothing to copy
+    return transportSeparation.separations;  // Nothing to copy
   }
 
   juce::Logger::writeToLog(
@@ -430,7 +429,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
   // DBG(...);
 
   // Reserve space in the output vector
-  transportSeparation.trackBuffers.reserve(numTracks);
+  transportSeparation.separations.reserve(numTracks);
 
   // --- 4. Data Copy Loop (with error handling) ---
   try {
@@ -442,7 +441,7 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
 
       // Skip copy loop if there are no samples (saves unnecessary work)
       if (numSamples == 0) {
-        transportSeparation.trackBuffers.push_back(
+        transportSeparation.separations.push_back(
             std::move(buffer));  // Add empty buffer
         continue;                                   // Go to next track
       }
@@ -478,31 +477,31 @@ std::vector<juce::AudioBuffer<float>> AudioPluginAudioProcessor::tensorToAudio(
         std::memcpy(dest, src, numSamples * sizeof(float));
       }
       // Move the filled buffer into the vector
-      transportSeparation.trackBuffers.push_back(std::move(buffer));
+      transportSeparation.separations.push_back(std::move(buffer));
     }
   } catch (const c10::Error& e) {  // Catch LibTorch specific errors during loop
     eventBroadcaster.post(
         "Error: libTorch error during tensor data copying loop: " +
         juce::String(e.what()));
     // DBG(...);
-    transportSeparation.trackBuffers
+    transportSeparation.separations
         .clear();         // Ensure partial results are not returned
-    return transportSeparation.trackBuffers;  // Return empty on error
+    return transportSeparation.separations;  // Return empty on error
   } catch (const std::exception& e) {  // Catch other potential errors (like the
                                        // runtime_error above)
     eventBroadcaster.post(
         "Error: standard exception during tensor data copying loop: " +
         juce::String(e.what()));
     // DBG(...);
-    transportSeparation.trackBuffers.clear();
-    return transportSeparation.trackBuffers;  // Return empty on error
+    transportSeparation.separations.clear();
+    return transportSeparation.separations;  // Return empty on error
   }
 
   juce::Logger::writeToLog("Tensor to Audio conversion successful.");
   // DBG("Tensor to Audio conversion successful.");
 
   
-  return transportSeparation.trackBuffers;
+  return transportSeparation.separations;
 }
 
 //void AudioPluginAudioProcessor::demix_track(
@@ -706,8 +705,7 @@ bool AudioPluginAudioProcessor::saveAudioBufferToWav(
 
 
 void AudioPluginAudioProcessor::saveSeparationIntoFile() {
-  TransportComponent::separationNames.clear();
-  TransportComponent::separationPaths.clear();
+  TransportComponent::deleteTempFiles();
   juce::File tempDir = juce::File::getSpecialLocation(juce::File::tempDirectory);
   juce::Logger::writeToLog("Temp directory: " + tempDir.getFullPathName());
     // --- Direct Call Example ---
@@ -723,9 +721,10 @@ void AudioPluginAudioProcessor::saveSeparationIntoFile() {
     TransportComponent::separationNames.push_back(fileName);
     TransportComponent::separationPaths.push_back(outputFile.getFullPathName());
     
-    if (!transportSeparation.trackBuffers.empty()) {
+    if (!transportSeparation.separations.empty()) {
       // Carica la prima traccia (es. kick drum) direttamente qui
-      transportSeparation.load(
+      juce::Logger::writeToLog("Loading first wave");
+        transportSeparation.load(
           0);  // Usa il sample rate del plugin
     }
     juce::Logger::writeToLog("Pushed into array");
@@ -858,10 +857,14 @@ juce::ThreadPoolJob::JobStatus SeparateThread::demix_track() {
 void AudioPluginAudioProcessor::saveSeparatedTracks(
     const juce::File& selectedFolder) {
   if (selectedFolder.isDirectory()) {
-    for (size_t i = 0; i < transportSeparation.trackBuffers.size(); ++i) {
-      juce::File trackFile =
-          selectedFolder.getChildFile("Track_" + juce::String(i + 1) + ".wav");
-      juce::FileOutputStream outputStream(trackFile);
+    for (size_t i = 0; i < transportSeparation.separations.size(); ++i) {
+        juce::String fileName =
+          transportOriginal.fileName + "_" + chosen->instruments[i];
+        juce::File trackFile = selectedFolder.getChildFile(fileName + ".wav");
+
+      saveAudioBufferToWav(transportSeparation.separations[i], trackFile,
+                           getSampleRate(), 16);
+      /*juce::FileOutputStream outputStream(trackFile);
 
       if (outputStream.openedOk()) {
         juce::WavAudioFormat wavFormat;
@@ -875,7 +878,7 @@ void AudioPluginAudioProcessor::saveSeparatedTracks(
               transportSeparation.trackBuffers[i], 0,
               transportSeparation.trackBuffers[i].getNumSamples());
         }
-      }
+      }*/
     }
   }
 }

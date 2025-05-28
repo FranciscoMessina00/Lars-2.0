@@ -26,15 +26,15 @@ bool TransportSeparation::load(int indx) {
     setSampleCount(0);
 
     // Crea bufferReader con il buffer separato
-    bufferReader = std::make_unique<BufferAudioSource>(
-        trackBuffers[indx], true);  // true = loop
+    bufferReader = std::make_unique<BufferAudioSource>(separations[indx],
+                                                       true);  // true = loop
 
     // Configura il transport
     transport.setSource(bufferReader.get(), 0, nullptr, TransportComponent::getFileSampleRate());
     transportStateChanged(Stopped);
 
     // Aggiorna la waveform
-    waveform.makeCopyOf(trackBuffers[indx]);
+    waveform.makeCopyOf(separations[indx]);
 
   
     fileName = TransportComponent::separationNames[indx];
@@ -49,8 +49,7 @@ bool TransportSeparation::load(int indx) {
 void TransportSeparation::reset() {
   //waveform.setNotClear();
   waveform = juce::AudioBuffer<float>();
-  trackBuffers.clear();
-  separations.clear(); // Non so perché ce ne sono due... sono da unire, fanno la stessa cosa ma vengono chiamati in punti diversi
+  separations.clear();
   fileName = "";
 }
 

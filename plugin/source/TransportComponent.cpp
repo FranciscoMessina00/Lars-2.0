@@ -95,8 +95,8 @@ void TransportComponent::deleteTempFiles() {
       tempFile.deleteFile();
     }
   }
-  separationNames = {};
-  separationPaths = {};
+  separationNames.clear();
+  separationPaths.clear();
 }
 
 }  // namespace audio_plugin

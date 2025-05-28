@@ -14,14 +14,13 @@ public:
 
   bool load(int indx);
   std::vector<juce::AudioBuffer<float>>& getSeparatedTracks() {
-    return trackBuffers;
+    return separations;
   };
   void reset();
   bool isFileLoaded() const override { return bufferReader != nullptr; };
   void setSampleCount(int newSampleCount) override;
   std::vector<juce::AudioBuffer<float>> separations;
   std::unique_ptr<BufferAudioSource> bufferReader;
-  std::vector<juce::AudioBuffer<float>> trackBuffers;
 
 
   // Percorsi dei file esportati per ogni traccia

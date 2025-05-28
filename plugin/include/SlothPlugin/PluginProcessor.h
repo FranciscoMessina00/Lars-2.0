@@ -104,11 +104,11 @@ public:
 
   Parameters params;
   juce::String modelName = "mdx23c.pt";
-  
-  //double getFileSampleRate() { return fileSampleRate; };
+
+  // double getFileSampleRate() { return fileSampleRate; };
 
   void process();
-  
+
   TransportOriginal transportOriginal;
   TransportSeparation transportSeparation;
 
@@ -119,7 +119,7 @@ public:
 
   void handleInferenceResult(torch::Tensor result) {
     outputTensor = std::move(result);
-    if(!doubleSeparation){
+    if (!doubleSeparation) {
       transportSeparation.separations =
           tensorToAudio(outputTensor);  // Converti il tensore in AudioBuffer
       saveSeparationIntoFile();         // Salva il risultato in un file WAV
@@ -130,20 +130,15 @@ public:
       drumBuffer = separatedTracks[2];
       juce::Logger::writeToLog("First part done, separating drums");
       process();
+      modelName = "mdx23c_inst_sep.pt";
       return;
     }
     juce::Logger::writeToLog("Separation completed and saved.");
-<<<<<<< Updated upstream
-    //sendChangeMessage();
+    // sendChangeMessage();
   }
   bool doubleSeparation = false;
-=======
-    // sendChangeMessage();
-  };
-
   void saveSeparatedTracks(const juce::File& selectedFolder);
 
->>>>>>> Stashed changes
 private:
   modelParams mdx_1;
   modelParams mdx_2;

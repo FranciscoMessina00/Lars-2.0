@@ -242,7 +242,7 @@ void AudioPluginAudioProcessorEditor::actionListenerCallback(const juce::String&
         divideButton.setEnabled(true);
         original.setMouseCursor(juce::MouseCursor::NormalCursor);
         separation.setMouseCursor(juce::MouseCursor::NormalCursor);
-        setTrackButtons(audioProcessor.transportSeparation.trackBuffers.size());
+        setTrackButtons(audioProcessor.transportSeparation.separations.size());
     }
 }
 
