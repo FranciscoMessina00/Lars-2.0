@@ -198,7 +198,7 @@ void WaveThumbnail::drawWaveform(juce::Graphics& g) {
   // 2. Disegno linee temporali
   g.setColour(juce::Colours::white.withAlpha(0.5f));
   g.setFont(float(getWidth()) / 80.0f);
-  g.drawLine(0, getHeight(), getWidth(), getHeight(), 1.f);
+  g.drawLine(0, getHeight(), getWidth(), getHeight(), 2.f);
 
   for (int i = getWidth() / 10; i < getWidth(); i += getWidth() / 10) {
     auto x = juce::jmap<float>(i, 0.0, getWidth(), 0.0, (duration));

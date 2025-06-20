@@ -47,6 +47,7 @@ target_sources(${PROJECT_NAME}
         source/TransportComponent.cpp
         source/TransportOriginal.cpp
         source/TransportSeparation.cpp
+        source/RoundedCornersEffect.cpp
         ${INCLUDE_DIR}/PluginEditor.h
         ${INCLUDE_DIR}/PluginProcessor.h
         ${INCLUDE_DIR}/WaveThumbnail.h
@@ -55,6 +56,7 @@ target_sources(${PROJECT_NAME}
         ${INCLUDE_DIR}/TransportComponent.h
         ${INCLUDE_DIR}/TransportOriginal.h
         ${INCLUDE_DIR}/TransportSeparation.h
+        ${INCLUDE_DIR}/RoundedCornersEffect.h
 )
 
 # juce_add_binary_data(${PROJECT_NAME}_data
@@ -110,6 +112,7 @@ target_compile_definitions(${PROJECT_NAME}
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_MODAL_LOOPS_PERMITTED=1
+        JUCE_USE_HIGHDPI=1
         # JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
 )
 

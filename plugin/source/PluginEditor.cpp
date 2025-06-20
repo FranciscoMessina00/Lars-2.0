@@ -21,19 +21,38 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
             p.transportSeparation),  
       audioProcessor(p) {
   startTimerHz(30);
+  playButton = std::make_unique<juce::DrawableButton>("playButton", juce::DrawableButton::ImageFitted);
+  setSvgButton("play_button.svg", playButton.get());
+  playButton->setTooltip("Click to Play/Stop");
+  playButton->setAlpha(0.3f);
 
-  playButton.setAlpha(0.3f);
-  loadButton.setAlpha(0.3f);
-  divideButton.setAlpha(0.3f);
-  playButton2.setAlpha(0.3f);
-  saveButton.setAlpha(0.3f);
+  loadButton = std::make_unique<juce::DrawableButton>("loadButton", juce::DrawableButton::ImageFitted);
+  setSvgButton("upload_button.svg", loadButton.get());
+  loadButton->setTooltip("Click to Load Audio File");
+  loadButton->setAlpha(0.3f);
+  
+  divideButton = std::make_unique<juce::ImageButton>("divideButton");
+  setImageButton("divide_image.png", divideButton.get(), false);
+  divideButton->setTooltip("Click to Separate Tracks");
+  divideButton->setAlpha(0.7f);
+  
+  playButton2 = std::make_unique<juce::DrawableButton>("playButton2", juce::DrawableButton::ImageFitted);
+  setSvgButton("play_button.svg", playButton2.get());
+  playButton2->setTooltip("Click to Play/Stop Separated Track");
+  playButton2->setAlpha(0.3f);
+  
+  saveButton = std::make_unique<juce::DrawableButton>("saveButton", juce::DrawableButton::ImageFitted);
+  setSvgButton("download_button.svg", saveButton.get());
+  saveButton->setTooltip("Click to Save Separated Tracks");
+  saveButton->setAlpha(0.3f);
 
   juce::StringArray items;
-  items.add("Mdx23c - Fast");
-  items.add("Mdx23c - Slow");
+  items.add("Mdx23c - Small");
+  items.add("Mdx23c - Large");
   items.add("Mdx23c - Music drum sep");
   trackSelector.addItemList(items, 1);
   trackSelector.setSelectedId(1, juce::dontSendNotification);
+  trackSelector.setJustificationType(juce::Justification::centred);
   trackSelector.onChange = [&]() {
     int selectedIndex = trackSelector.getSelectedItemIndex();
     juce::Logger::writeToLog("Selected index: " + juce::String(selectedIndex));
@@ -57,16 +76,21 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     }
     
   };
+  trackSelector.setTooltip("Select the model to use for separation");
+  trackSelector.setColour(juce::ComboBox::backgroundColourId,
+                          juce::Colours::black);
 
-  loadButton.onClick = [&]() {
+  loadButton->onClick = [&]() {
     if (audioProcessor.transportOriginal.load()) {
       audioProcessor.transportSeparation.reset();
-      playButton2.setEnabled(false);
+      playButton2->setEnabled(false);
       separation.repaint();
+      selectedTrack = -1;  // Reset selected track when loading a new file
+      refreshTrackButtons();
     };
     //updateTransportButtons(audioProcessor.params.playButtonParam->get());
-    playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
-    divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+    playButton->setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+    divideButton->setEnabled(audioProcessor.transportOriginal.isFileLoaded());
     repaint();
   };
 
@@ -82,7 +106,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     }
   };*/
 
-  playButton.onClick = [&]() {
+  playButton->onClick = [&]() {
     updateTransportButtons(0, audioProcessor.params.playButtonParam->get());
     audioProcessor.params.playButtonParam->get()
         ? audioProcessor.transportOriginal.stopFile()
@@ -92,7 +116,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
           );
   };
 
-  playButton2.onClick = [&]() {
+  playButton2->onClick = [&]() {
     updateTransportButtons(1, audioProcessor.params.playButton2Param->get());
     audioProcessor.params.playButton2Param->get()
         ? audioProcessor.transportSeparation.stopFile()
@@ -104,17 +128,19 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
 
 
 
-  divideButton.onClick = [&]() {
+  divideButton->onClick = [&]() {
       original.setMouseCursor(juce::MouseCursor::WaitCursor);
       separation.setMouseCursor(juce::MouseCursor::WaitCursor);
-      loadButton.setEnabled(false);
-      playButton2.setEnabled(false);
-      divideButton.setEnabled(false);
+      loadButton->setEnabled(false);
+      playButton2->setEnabled(false);
+      divideButton->setEnabled(false);
       audioProcessor.transportSeparation.reset();
+      selectedTrack = -1;  // Reset selected track when starting separation
+      refreshTrackButtons();
       audioProcessor.process();
   };
 
-  saveButton.onClick = [&]() {
+  saveButton->onClick = [&]() {
     juce::FileChooser fileChooser("Select a folder to save separated tracks");
 
     if (fileChooser.browseForDirectory()) {
@@ -125,35 +151,41 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
     }
   };
 
-  full.setColour(juce::GroupComponent::outlineColourId,
-                 juce::Colours::transparentBlack);
-  second.setColour(juce::GroupComponent::outlineColourId,
-                   juce::Colours::transparentBlack);
-
-  playButton.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
-  playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
-  playButton2.setColour(juce::TextButton::buttonColourId, juce::Colours::green);
-  saveButton.setColour(juce::TextButton::buttonColourId, juce::Colours::yellow);
-  playButton2.setEnabled(audioProcessor.transportSeparation.isFileLoaded());
-  divideButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
-  full.addAndMakeVisible(original);
-  full.addAndMakeVisible(loadButton);
-  full.addAndMakeVisible(playButton);
-  full.addAndMakeVisible(divideButton);
-  full.addAndMakeVisible(trackSelector);
-  second.addAndMakeVisible(separation);
-  second.addAndMakeVisible(playButton2);
-  second.addAndMakeVisible(saveButton);
-
-  setTrackButtons(6);
+  /*top.setOpaque(false);
+  top.setVisible(true);
+  top.setInterceptsMouseClicks(false, true);*/
   
-
+  full.setComponentEffect(rounded);
+  second.setComponentEffect(rounded);
+  addAndMakeVisible(top);
   addAndMakeVisible(full);
   addAndMakeVisible(second);
 
+  playButton->setColour(juce::TextButton::buttonColourId, juce::Colours::green);
+  playButton->setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+  playButton2->setColour(juce::TextButton::buttonColourId,
+                         juce::Colours::green);
+  saveButton->setColour(juce::TextButton::buttonColourId, juce::Colours::yellow);
+  playButton2->setEnabled(audioProcessor.transportSeparation.isFileLoaded());
+  saveButton->setEnabled(audioProcessor.transportSeparation.isFileLoaded());
+  divideButton->setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+  full.addAndMakeVisible(original);
+  full.addAndMakeVisible(*loadButton);
+  full.addAndMakeVisible(*playButton);
+  full.addAndMakeVisible(*divideButton);
+  top.addAndMakeVisible(trackSelector);
+  second.addAndMakeVisible(separation);
+  second.addAndMakeVisible(*playButton2);
+  second.addAndMakeVisible(*saveButton);
+
+  selectedTrack = -1;  // Inizializza il track selezionata a -1
+  setTrackButtons(6);
+  
+  
+
   // setResizable(true, true); // Abilita il ridimensionamento manuale
   // setResizeLimits(800, 100, 2000, 1600); // Min: 400x300, Max: 2000x1600
-  setSize(700, 200);
+  setSize(1000, 400);
 
   audioProcessor.params.playButtonParam->addListener(this);
   audioProcessor.params.playButton2Param->addListener(this);
@@ -171,12 +203,25 @@ AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor() {
 
 //==============================================================================
 void AudioPluginAudioProcessorEditor::paint(juce::Graphics& g) {
-  g.fillAll(juce::Colours::black);
+  g.fillAll(backgroundColour);
+
+  g.setColour(juce::Colour(0xFF0E0E0E));
+  g.fillRoundedRectangle(full.getBounds().toFloat(), 10.0f);
+  g.fillRoundedRectangle(second.getBounds().toFloat(), 10.0f);
 }
 
 void AudioPluginAudioProcessorEditor::resized() {
-  full.setBounds(0, 0, getWidth(), getHeight() / 2);
-  second.setBounds(0, full.getBottom(), getWidth(), getHeight() / 2);
+
+  const int w = getWidth();
+  const int h = getHeight();
+  const int m = 10.f;
+  const int unitH = h / 7;
+  const int boxH = 3 * unitH;
+
+  top.setBounds(0, 0, w, h);
+
+  full.setBounds(m, unitH, w - 2 * m, boxH - m);
+  second.setBounds(m, full.getBottom() + m, w - 2 * m, boxH - m);
   
   //full.setBounds(area.removeFromTop(area.getHeight() / 2));
   //second.setBounds(area); 
@@ -184,18 +229,23 @@ void AudioPluginAudioProcessorEditor::resized() {
   //juce::Logger::writeToLog(second.getBounds().toString());
   original.setBounds(full.getLocalBounds());
   separation.setBounds(second.getLocalBounds());
-  loadButton.setBounds(getWidth() / 2 - 25, 5, buttonWidth, buttonHeight);
-  playButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
-  divideButton.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
-  trackSelector.setBounds(getWidth() / 10, 5, 120, 20);
-  playButton2.setBounds(getWidth() / 2, 5, buttonWidth, buttonHeight);
-  saveButton.setBounds(getWidth() / 2 + 25, 5, buttonWidth, buttonHeight);
+  loadButton->setBounds(full.getWidth() / 2 - buttonWidth, 5, buttonWidth, buttonHeight);
+  playButton->setBounds(full.getWidth() / 2 + buttonWidth, 5, buttonWidth, buttonHeight);
+  divideButton->setBounds(full.getWidth() / 2, 5, buttonWidth, buttonHeight);
+  trackSelector.setBounds((getWidth() / 2) - (getWidth() / 8),
+                          (getHeight() / 7) / 4, getWidth() / 4,
+                          (getHeight() / 7) / 2);
+  playButton2->setBounds(second.getWidth() / 2 + (buttonWidth / 2), 5,
+                         buttonWidth, buttonHeight);
+  saveButton->setBounds(second.getWidth() / 2 - (buttonWidth / 2), 5, buttonWidth,
+                        buttonHeight);
   //tracks[tracks.size() - 1]->setBounds(getWidth() - buttonWidth - 15, 5, buttonWidth, buttonHeight);
   for (int i = tracks.size() - 1; i >= 0; --i) {
     tracks[i]->setBounds(
-        getWidth() - 15 - (buttonWidth + 5)* (tracks.size() - i), 5,
+        second.getWidth() - 15 - (buttonWidth + 5) * (tracks.size() - i), 5,
         buttonWidth, buttonHeight);
   }
+  repaint();
 }
 
 //void AudioPluginAudioProcessorEditor::parameterValueChanged(int, float value) {
@@ -237,12 +287,15 @@ void AudioPluginAudioProcessorEditor::actionListenerCallback(const juce::String&
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                                                 "Plugin Error", message);
     } else if (message.startsWith("Demix finished")) {
-        loadButton.setEnabled(true);
-        playButton2.setEnabled(true);
-        divideButton.setEnabled(true);
+        loadButton->setEnabled(true);
+        playButton2->setEnabled(true);
+        saveButton->setEnabled(true);
+        divideButton->setEnabled(true);
         original.setMouseCursor(juce::MouseCursor::NormalCursor);
         separation.setMouseCursor(juce::MouseCursor::NormalCursor);
         setTrackButtons(audioProcessor.transportSeparation.separations.size());
+        selectedTrack = 0;
+        refreshTrackButtons();
     }
 }
 
@@ -250,29 +303,33 @@ void AudioPluginAudioProcessorEditor::updateTransportButtons(int sourceIndex, bo
   switch (sourceIndex) {
     case 0:  // Original
       //playButton.setToggleState(isPlaying, juce::dontSendNotification);
-      playButton.setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+      playButton->setEnabled(audioProcessor.transportOriginal.isFileLoaded());
       if (isPlaying)
       {
-        playButton.setButtonText("S");
-        playButton.setColour(juce::TextButton::buttonColourId,
+        playButton->setButtonText("S");
+        playButton->setColour(juce::TextButton::buttonColourId,
                              juce::Colours::red);
+        setSvgButton("pause_button.svg", playButton.get());
       } else 
       {
-        playButton.setButtonText("P");
-        playButton.setColour(juce::TextButton::buttonColourId,
+        playButton->setButtonText("P");
+        playButton->setColour(juce::TextButton::buttonColourId,
                              juce::Colours::green);
+        setSvgButton("play_button.svg", playButton.get());
       }
       break;
     case 1:  // Separated
       //playButton2.setToggleState(isPlaying, juce::dontSendNotification);
       if (isPlaying) {
-        playButton2.setButtonText("S");
-        playButton2.setColour(juce::TextButton::buttonColourId,
+        playButton2->setButtonText("S");
+        playButton2->setColour(juce::TextButton::buttonColourId,
                              juce::Colours::red);
+        setSvgButton("pause_button.svg", playButton2.get());
       } else {
-        playButton2.setButtonText("P");
-        playButton2.setColour(juce::TextButton::buttonColourId,
+        playButton2->setButtonText("P");
+        playButton2->setColour(juce::TextButton::buttonColourId,
                              juce::Colours::green);
+        setSvgButton("play_button.svg", playButton2.get());
       }
       break;
   }
@@ -295,14 +352,16 @@ void AudioPluginAudioProcessorEditor::timerCallback() {
 
 void AudioPluginAudioProcessorEditor::mouseEnter(const juce::MouseEvent& event) {
     // Se il mouse è sopra un bottone, rendilo opaco
-    if (event.eventComponent == &loadButton ||
-        event.eventComponent == &playButton ||
-        event.eventComponent == &divideButton ||
-        event.eventComponent == &playButton2 ||
-        event.eventComponent == &saveButton) 
+    if (event.eventComponent == loadButton.get() ||
+        event.eventComponent == playButton.get() ||
+        event.eventComponent == playButton2.get() ||
+        event.eventComponent == saveButton.get()) 
     {
         event.eventComponent->setAlpha(1.0f);
         event.eventComponent->repaint();
+    } else if (event.eventComponent == divideButton.get()) {
+      event.eventComponent->setAlpha(0.8f);
+      event.eventComponent->repaint();
     }
     else 
     {
@@ -321,14 +380,16 @@ void AudioPluginAudioProcessorEditor::mouseEnter(const juce::MouseEvent& event) 
 
 void AudioPluginAudioProcessorEditor::mouseExit(const juce::MouseEvent& event) {
     // Se il mouse esce da un bottone, rendilo trasparente
-    if (event.eventComponent == &loadButton ||
-        event.eventComponent == &playButton ||
-        event.eventComponent == &divideButton ||
-        event.eventComponent == &playButton2 ||
-        event.eventComponent == &saveButton) 
+    if (event.eventComponent == loadButton.get() ||
+        event.eventComponent == playButton.get() ||
+        event.eventComponent == playButton2.get() ||
+        event.eventComponent == saveButton.get()) 
     {
         event.eventComponent->setAlpha(0.3f);
         event.eventComponent->repaint();
+    } else if (event.eventComponent == divideButton.get()) {
+      event.eventComponent->setAlpha(0.7f);
+      event.eventComponent->repaint();
     }
     else 
     {
@@ -421,15 +482,57 @@ void AudioPluginAudioProcessorEditor::mouseUp(const juce::MouseEvent& event) {
   // Gestisci altri eventi mouseUp se necessario
 }
 
+void AudioPluginAudioProcessorEditor::refreshTrackButtons() {
+  // we assume `tracks`, `names`, and `length` are still valid here,
+  // so you might want to also store `names` and `trackCount` as members.
+
+  for (int j = 0; j < (int)tracks.size(); ++j) {
+    // figure out the correct filename for this button:
+    const auto& nm = names[j];
+    juce::String file;
+    if (nm == "Cymbals")
+      file = "Crash.png";
+    else
+      file = nm + ".png";
+
+    // invert only if this is the selected track:
+    setImageButton(file, tracks[j].get(), (j == selectedTrack));
+  }
+}
+
+
 void AudioPluginAudioProcessorEditor::setTrackButtons(int length) {
     tracks.clear();
+    if (length == 5) {
+      names = {"Kick", "Snare", "Toms", "Hi-Hat", "Cymbals"};
+    }
+    else if (length == 6) {
+      names = {"Kick", "Snare", "Toms", "Hi-Hat", "Ride", "Crash"};
+    }
+    else {
+        //Log error
+      juce::Logger::writeToLog("Error: Invalid length for track buttons: " +
+                               juce::String(length));
+    
+    }
 
     for (int i = 0; i < length; i++) {
-        tracks.push_back(std::make_unique<juce::TextButton>(juce::String(i + 1)));
+        tracks.push_back(std::make_unique<juce::ImageButton>(names[i]));
+        std::string fileName;
+        if (names[i].compare("Cymbals") == 0) {
+            fileName = "Crash.png"; 
+        } else {
+            fileName = names[i] + ".png";
+        }
+        setImageButton(fileName, tracks[i].get(), false);
+        tracks[i]->setTooltip(names[i]);
         tracks[i]->onClick = [this, i] {
-          if (i < audioProcessor.transportSeparation.getSeparatedTracks().size()) {
-            audioProcessor.transportSeparation.load(i);
-          }
+
+            if (i < audioProcessor.transportSeparation.getSeparatedTracks().size()) {
+                selectedTrack = i;
+                audioProcessor.transportSeparation.load(i); 
+                refreshTrackButtons();
+            }
         };
         tracks[i]->setAlpha(0.3f);
         tracks[i]->setEnabled(true);
@@ -439,7 +542,60 @@ void AudioPluginAudioProcessorEditor::setTrackButtons(int length) {
     resized();
 }
 
+void AudioPluginAudioProcessorEditor::setSvgButton(juce::String svg, juce::DrawableButton* button) {
+  juce::File desktopFolder =
+      juce::File::getSpecialLocation(juce::File::userDesktopDirectory);
+  juce::File svgFileOnDesktop = desktopFolder.getChildFile(svg);
+  std::unique_ptr<juce::XmlElement> xml(
+      juce::XmlDocument::parse(svgFileOnDesktop));
+  std::unique_ptr<juce::Drawable> drawable(juce::Drawable::createFromSVG(*xml));
 
+  if (drawable != nullptr) {
+    button->setImages(drawable.get());
+    drawable.release();
+  } else {
+    // Couldn’t create a Drawable from the parsed XML
+    juce::Logger::writeToLog("Error: createFromSVG() returned nullptr for " +
+                             svgFileOnDesktop.getFullPathName());
+  }
+}
+
+void AudioPluginAudioProcessorEditor::setImageButton(
+    juce::String image,
+    juce::ImageButton* button,
+    bool invertColours) {
+  juce::File desktopFolder =
+      juce::File::getSpecialLocation(juce::File::userDesktopDirectory);
+  juce::File imageFileOnDesktop = desktopFolder.getChildFile(image);
+
+  if (imageFileOnDesktop.exists()) {
+    juce::Image img = juce::ImageCache::getFromFile(imageFileOnDesktop);
+    img.duplicateIfShared();
+    if (invertColours && img.isValid()) {
+      for (int y = 0; y < img.getHeight(); ++y) {
+        for (int x = 0; x < img.getWidth(); ++x) {
+          auto c = img.getPixelAt(x, y);
+          auto inverted =
+              juce::Colour::fromRGBA(255 - c.getRed(), 255 - c.getGreen(),
+                                     255 - c.getBlue(), c.getAlpha());
+          img.setPixelAt(x, y, inverted);
+        }
+      }
+    }
+    button->setImages(false, true, true,
+                      img, 0.5f,
+                      juce::Colours::transparentBlack,
+                      img,  // overImage
+                      0.8f, juce::Colours::transparentWhite,
+                      img,  // downImage
+                      1.0f, juce::Colours::transparentWhite,
+                      0.0f);
+  } else {
+    // Couldn’t create a Drawable from the parsed XML
+    juce::Logger::writeToLog("Error: loding image returned nullptr for " +
+                             imageFileOnDesktop.getFullPathName());
+  }
+}
 
 //void AudioPluginAudioProcessorEditor::mouseEnter(
 //    const juce::MouseEvent& event) {
