@@ -863,7 +863,8 @@ void AudioPluginAudioProcessor::saveSeparatedTracks(
         juce::File trackFile = selectedFolder.getChildFile(fileName + ".wav");
 
       saveAudioBufferToWav(transportSeparation.separations[i], trackFile,
-                           getSampleRate(), 16);
+                             transportOriginal.getFileSampleRate(),
+                             transportOriginal.getFileBitDepth());
       /*juce::FileOutputStream outputStream(trackFile);
 
       if (outputStream.openedOk()) {

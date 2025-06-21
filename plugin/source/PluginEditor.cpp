@@ -134,6 +134,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
       loadButton->setEnabled(false);
       playButton2->setEnabled(false);
       divideButton->setEnabled(false);
+      saveButton->setEnabled(false);
       audioProcessor.transportSeparation.reset();
       selectedTrack = -1;  // Reset selected track when starting separation
       refreshTrackButtons();
