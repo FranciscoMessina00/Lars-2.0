@@ -255,8 +255,10 @@ void AudioPluginAudioProcessor::process() {
                              juce::String(e.what()));*/
     if (modelName == "") {
       eventBroadcaster.post("Error: No model has been selected!");
+      eventBroadcaster.post("Demix interrupted");
     } else {
       eventBroadcaster.post("Error: Model not found");
+      eventBroadcaster.post("Demix interrupted");
     }
     return;
   }

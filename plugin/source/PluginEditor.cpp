@@ -297,6 +297,11 @@ void AudioPluginAudioProcessorEditor::actionListenerCallback(const juce::String&
         setTrackButtons(audioProcessor.transportSeparation.separations.size());
         selectedTrack = 0;
         refreshTrackButtons();
+    } else if (message.startsWith("Demix interrupted")) {
+      loadButton->setEnabled(true);
+      divideButton->setEnabled(true);
+      original.setMouseCursor(juce::MouseCursor::NormalCursor);
+      separation.setMouseCursor(juce::MouseCursor::NormalCursor);
     }
 }
 
