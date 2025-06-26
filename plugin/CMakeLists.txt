@@ -32,7 +32,7 @@ juce_add_plugin(${PROJECT_NAME}
     PLUGIN_MANUFACTURER_CODE slth # change this
     PLUGIN_CODE slpg # change this
     FORMATS Standalone VST3 # may change this
-    PRODUCT_NAME "SlothPlugin" # change this
+    PRODUCT_NAME "Lars 2_0" # change this
     # VST3_AUTO_MANIFEST TRUE # Keep this if you were using it before, usually default
 )
 
