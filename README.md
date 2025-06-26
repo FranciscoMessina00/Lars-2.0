@@ -40,24 +40,34 @@ Lars-2.0 leverages advanced audio processing and machine learning techniques to 
 
 ## 🛠️ Installation
 
-First, download libtorch (CPU distribution, release version):  
-https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-2.6.0%2Bcpu.zip
-
 ### Clone the repository
 
 ```bash
 git clone https://github.com/FranciscoMessina00/Lars-2.0.git
+```
+
+#### **Download Libtorch**
+   Grab the CPU-only Libtorch release (v2.6.0) ZIP from:  
+https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-2.6.0%2Bcpu.zip
+
+#### **Extract folder**
+- Locate the downloaded file (e.g. `libtorch-win-shared-with-deps-2.6.0+cpu.zip`).  
+- Extract it (right-click → **Extract All…**, or use your preferred tool) into a temporary folder.  
+- Inside the temporary folder you should now have a folder named `libtorch` containing subfolders like `bin/`, `include/`, and `lib/`.
+
+#### **Organize in Your Project**
+In your project root, create a `libs/` folder (if it doesn’t already exist) and move the extracted `libtorch` directory into it.
+
+### Build (VST3/Standalone)
+```bash
 cd Lars-2.0
 cmake -S . -B build
 ```
 
 This will automatically install JUCE 8.0.2. It will also set up the testing pipeline if the user chooses to use it—note that we have not configured or used the testing pipeline ourselves.
 
-### Build (VST3/Standalone)
-
-- Before compiling the Visual Studio solution, ensure that the libtorch library is inside the `libs` directory.
-- Compile the desired format in Release mode.
-- After the build, the VST3 plugin and standalone software will be in `.\build\plugin\SlothPlugin_artefacts\Release`.
+- After the first build, compile the desired format in Release mode.
+- After the compilation, the VST3 plugin and standalone software will be in `.\build\plugin\SlothPlugin_artefacts\Release`.
 - Move the VST3 folder to `C:\Program Files\Common Files\VST3` and the Standalone directory to your preferred location (don't change the relative position of the internal files).
 
 To make the VST3 work properly, libtorch's DLLs inside `.\libtorch\lib\` must be placed inside the `System32` folder, or the path to `.\libtorch\lib\` must be added to the system's global PATH environment variable. We acknowledge this is not the ideal installation process, but currently, it is the only way we have managed to get the VST3 working on Windows. There does not seem to be an easy solution for making libtorch work with the VST3 format. For more details, do not hesitate to contact us. For the standalone version, it is sufficient to leave the DLLs inside the same folder as the executable file.
