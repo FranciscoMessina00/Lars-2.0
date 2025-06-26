@@ -59,17 +59,30 @@ target_sources(${PROJECT_NAME}
         ${INCLUDE_DIR}/RoundedCornersEffect.h
 )
 
-# juce_add_binary_data(${PROJECT_NAME}_data
-#     SOURCES
-#     #   You can add more files here if needed, e.g.:
-#     #   assets/background.png NAMESPACE GuiAssets
-# )
-
 # --- Include Directories ---
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${TORCH_INCLUDE_DIRS} # Include directories provided by find_package(Torch)
+    PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR}
+)
+set(IMAGES_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../images")
+juce_add_binary_data(${PROJECT_NAME}_data
+     SOURCES
+     #   You can add more files here if needed, e.g.:
+     #   assets/background.png NAMESPACE GuiAssets
+     ${IMAGES_SOURCE_DIR}/Crash.png
+     ${IMAGES_SOURCE_DIR}/Hihat.png
+     ${IMAGES_SOURCE_DIR}/Kick.png
+     ${IMAGES_SOURCE_DIR}/Toms.png
+     ${IMAGES_SOURCE_DIR}/Ride.png
+     ${IMAGES_SOURCE_DIR}/Snare.png
+     ${IMAGES_SOURCE_DIR}/divide_image.png
+     ${IMAGES_SOURCE_DIR}/download_button.svg
+     ${IMAGES_SOURCE_DIR}/pause_button.svg
+     ${IMAGES_SOURCE_DIR}/play_button.svg
+     ${IMAGES_SOURCE_DIR}/upload_button.svg
 )
 
 # --- Link Libraries ---
@@ -101,8 +114,12 @@ target_link_libraries(${PROJECT_NAME}
         # ${TORCH_LIBRARIES}
         # Or the simple name if that's how find_package defines it:
         torch
-        # ${PROJECT_NAME}_data
+        ${PROJECT_NAME}_data
 )
+
+
+
+
 
 
 # --- Compile Definitions ---
@@ -122,7 +139,7 @@ target_compile_definitions(${PROJECT_NAME}
 
 # Check if we are using MSVC (you can change back to TARGET check later)
 if (MSVC) # Using simplified condition for testing
-    message(STATUS "Setting up post-build DLL copy for VST3 target and Helper.")
+    message(STATUS "Setting up post-build DLL copy for targets and Helper.")
 
     # Find all DLLs in the LibTorch lib directory
     file(GLOB TORCH_DLLS CONFIGURE_DEPENDS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
@@ -134,56 +151,114 @@ if (MSVC) # Using simplified condition for testing
 
         # Define target names (Verify these in VS Solution Explorer)
         set(VST3_TARGET_NAME "${PROJECT_NAME}_VST3")
-        set(VST3_HELPER_TARGET_NAME "juce_vst3_helper")
+        set(STANDALONE_TARGET_NAME "${PROJECT_NAME}_Standalone")
+        set(MODEL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../models")
 
-        # Define destination directories using generator expressions
-        set(VST3_DLL_DIR "$<TARGET_FILE_DIR:${VST3_TARGET_NAME}>")
-        set(VST3_HELPER_DIR "$<TARGET_FILE_DIR:${VST3_HELPER_TARGET_NAME}>")
+        if(TARGET ${VST3_TARGET_NAME})
+            message(STATUS "VST3 target found: ${VST3_TARGET_NAME}")
+            set(VST3_HELPER_TARGET_NAME "juce_vst3_helper")
 
-        message(STATUS "VST3 DLL Destination Dir (Generator Expression): ${VST3_DLL_DIR}")
-        message(STATUS "VST3 Helper Dir (Generator Expression): ${VST3_HELPER_DIR}")
+            # Define destination directories using generator expressions
+            set(VST3_DLL_DIR "$<TARGET_FILE_DIR:${VST3_TARGET_NAME}>")
+            set(VST3_HELPER_DIR "$<TARGET_FILE_DIR:${VST3_HELPER_TARGET_NAME}>")
 
-        # --- COMMAND 1: Attached to juce_vst3_helper ---
-        # Copies DLLs next to juce_vst3_helper.exe immediately after it's built.
-        # Hypothesis: This makes them available when the VST3 post-build runs the helper.
-        add_custom_command(
-            TARGET ${VST3_HELPER_TARGET_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${TORCH_DLLS}
-                ${VST3_HELPER_DIR}
-            COMMENT "Copying LibTorch DLLs to Helper dir (${VST3_HELPER_DIR}) immediately after helper build"
-            VERBATIM
-        )
+            message(STATUS "VST3 DLL Destination Dir (Generator Expression): ${VST3_DLL_DIR}")
+            message(STATUS "VST3 Helper Dir (Generator Expression): ${VST3_HELPER_DIR}")
 
-        # --- COMMAND 2: Attached to SlothPlugin_VST3 ---
-        # Copies DLLs next to the final VST3 DLL after the VST3 target is built.
-        # This ensures they are correctly placed for deployment/runtime use.
-        add_custom_command(
-            TARGET ${VST3_TARGET_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${TORCH_DLLS}
-                ${VST3_DLL_DIR}
-            COMMENT "Copying LibTorch DLLs to final VST3 dir (${VST3_DLL_DIR}) after VST3 build"
-            VERBATIM
-        )
+            # --- COMMAND 1: Attached to juce_vst3_helper ---
+            # Copies DLLs next to juce_vst3_helper.exe immediately after it's built.
+            # Hypothesis: This makes them available when the VST3 post-build runs the helper.
+            add_custom_command(
+                TARGET ${VST3_HELPER_TARGET_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${TORCH_DLLS}
+                    ${VST3_HELPER_DIR}
+                COMMENT "Copying LibTorch DLLs to Helper dir (${VST3_HELPER_DIR}) immediately after helper build"
+                VERBATIM
+            )
 
-        set(MODEL_SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../models/mdx23c.pt") # Percorso sorgente
-        set(MODEL_DEST_DIR "$<TARGET_FILE_DIR:${VST3_TARGET_NAME}>")
-        if(EXISTS "${MODEL_SOURCE_PATH}")
-            message(STATUS "Setting up model copy: ${MODEL_SOURCE_PATH} -> ${MODEL_DEST_DIR}")
-            # Copia il modello accanto al file VST3
+            # --- COMMAND 2: Attached to SlothPlugin_VST3 ---
+            # Copies DLLs next to the final VST3 DLL after the VST3 target is built.
+            # This ensures they are correctly placed for deployment/runtime use.
             add_custom_command(
                 TARGET ${VST3_TARGET_NAME} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${MODEL_SOURCE_PATH}"
-                    "${MODEL_DEST_DIR}/mdx23c.pt" # Copia nella stessa dir del VST3
-                COMMENT "Copying model file to VST3 output directory"
+                    ${TORCH_DLLS}
+                    ${VST3_DLL_DIR}
+                COMMENT "Copying LibTorch DLLs to final VST3 dir (${VST3_DLL_DIR}) after VST3 build"
                 VERBATIM
             )
-            # Potresti dover fare lo stesso per il target Standalone se lo usi
-        else()
-            message(WARNING "Model file not found for copying: ${MODEL_SOURCE_PATH}")
+
+            set(MODEL_DEST_DIR "$<TARGET_FILE_DIR:${VST3_TARGET_NAME}>")
+
+            # List all the files you want to copy:
+            set(MODEL_FILES
+                "${MODEL_SOURCE_DIR}/mdx23c.pt"
+                "${MODEL_SOURCE_DIR}/mdx23c_capstone.pt"
+                "${MODEL_SOURCE_DIR}/mdx23c_inst_sep.pt"
+            )
+
+            # Verify they exist (optional, but helpful)
+            foreach(f IN LISTS MODEL_FILES)
+              if(NOT EXISTS "${f}")
+                message(WARNING "Model file not found: ${f}")
+              endif()
+            endforeach()
+
+            add_custom_command(
+              TARGET ${VST3_TARGET_NAME} POST_BUILD
+              COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MODEL_FILES}        # all of your source files
+                ${MODEL_DEST_DIR}      # destination directory
+              COMMENT "Copying model files to VST3 output directory"
+              VERBATIM
+            )
         endif()
+        if(TARGET ${STANDALONE_TARGET_NAME})
+            message(STATUS "Standalone target found: ${STANDALONE_TARGET_NAME}")
+            # Define destination directories using generator expressions
+            set(STANDALONE_DLL_DIR "$<TARGET_FILE_DIR:${STANDALONE_TARGET_NAME}>")
+
+            message(STATUS "STANDALONE DLL Destination Dir (Generator Expression): ${STANDALONE_DLL_DIR}")
+
+            # --- COMMAND 1: Attached to SlothPlugin_Standalone ---
+            # Copies DLLs next to the final VST3 DLL after the VST3 target is built.
+            # This ensures they are correctly placed for deployment/runtime use.
+            add_custom_command(
+                TARGET ${STANDALONE_TARGET_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${TORCH_DLLS}
+                    ${STANDALONE_DLL_DIR}
+                COMMENT "Copying LibTorch DLLs to final Standalone dir (${STANDALONE_DLL_DIR}) after Standalone build"
+                VERBATIM
+            )
+
+            set(MODEL_DEST_DIR "$<TARGET_FILE_DIR:${STANDALONE_TARGET_NAME}>")
+
+            # List all the files you want to copy:
+            set(MODEL_FILES
+                "${MODEL_SOURCE_DIR}/mdx23c.pt"
+                "${MODEL_SOURCE_DIR}/mdx23c_capstone.pt"
+                "${MODEL_SOURCE_DIR}/mdx23c_inst_sep.pt"
+            )
+
+            # Verify they exist (optional, but helpful)
+            foreach(f IN LISTS MODEL_FILES)
+              if(NOT EXISTS "${f}")
+                message(WARNING "Model file not found: ${f}")
+              endif()
+            endforeach()
+
+            add_custom_command(
+              TARGET ${STANDALONE_TARGET_NAME} POST_BUILD
+              COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MODEL_FILES}        # all of your source files
+                ${MODEL_DEST_DIR}      # destination directory
+              COMMENT "Copying model files to VST3 output directory"
+              VERBATIM
+            )
+        endif()
+        
     endif()
 # else() block could go here if using the TARGET check
 #    if(MSVC)

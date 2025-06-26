@@ -6,8 +6,47 @@
 #include "WaveThumbnail.h"
 #include "RoundedCornersEffect.h"
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "BinaryData.h"
+
 
 namespace audio_plugin {
+
+struct Resource {
+  const void* data;
+  int dataSize;
+};
+
+static Resource getImageResource(const juce::String& name) {
+  if (name == "Kick.png")
+    return {BinaryData::Kick_png, BinaryData::Kick_pngSize};
+  else if (name == "Snare.png")
+    return {BinaryData::Snare_png, BinaryData::Snare_pngSize};
+  else if (name == "Toms.png")
+    return {BinaryData::Toms_png, BinaryData::Toms_pngSize};
+  else if (name == "Ride.png")
+    return {BinaryData::Ride_png, BinaryData::Ride_pngSize};
+  else if (name == "Hi-Hat.png")
+    return {BinaryData::Hihat_png, BinaryData::Hihat_pngSize};
+  else if (name == "Crash.png")
+    return { BinaryData::Crash_png, BinaryData::Crash_pngSize};
+  else
+    return { nullptr, 0 };
+}
+
+static Resource getSvgResource(const juce::String& name) {
+  if (name == "divide_image.svg")
+    return {BinaryData::divide_image_png, BinaryData::divide_image_pngSize};
+  else if (name == "download_button.svg")
+    return {BinaryData::download_button_svg, BinaryData::download_button_svgSize};
+  else if (name == "pause_button.svg")
+    return {BinaryData::pause_button_svg, BinaryData::pause_button_svgSize};
+  else if (name == "play_button.svg")
+    return {BinaryData::play_button_svg, BinaryData::play_button_svgSize};
+  else if (name == "upload_button.svg")
+    return {BinaryData::upload_button_svg, BinaryData::upload_button_svgSize};
+  else
+    return {nullptr, 0};
+}
 
 class AudioPluginAudioProcessorEditor
     : public juce::AudioProcessorEditor,

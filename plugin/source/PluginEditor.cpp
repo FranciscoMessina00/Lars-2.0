@@ -544,7 +544,7 @@ void AudioPluginAudioProcessorEditor::setTrackButtons(int length) {
 }
 
 void AudioPluginAudioProcessorEditor::setSvgButton(juce::String svg, juce::DrawableButton* button) {
-  juce::File desktopFolder =
+    juce::File desktopFolder =
       juce::File::getSpecialLocation(juce::File::userDesktopDirectory);
   juce::File svgFileOnDesktop = desktopFolder.getChildFile(svg);
   std::unique_ptr<juce::XmlElement> xml(
