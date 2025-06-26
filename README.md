@@ -6,7 +6,7 @@ Lars-2.0 is a Windows-compatible VST3 plugin and standalone application designed
 
 ## 🎵 Description
 
-Lars-2.0 leverages advanced audio processing and machine learning techniques to extract drum components from stereo music tracks. It is intended for producers, musicians, DJs, and researchers who want to easily isolate drums, either as a VST3 plugin or a desktop application.
+Lars-2.0 leverages advanced audio processing and machine learning techniques to extract drum components from music tracks. It is intended for producers, musicians, DJs, and researchers who want to easily isolate drums, either as a VST3 plugin or a desktop application.
 
 ---
 
@@ -15,7 +15,7 @@ Lars-2.0 leverages advanced audio processing and machine learning techniques to 
 - Drum demixing: separate drums from the full mix
 - VST3 plugin and standalone desktop application support
 - Intuitive graphical user interface
-- Real-time or offline processing
+- Offline processing
 - Compatible with Windows (tested on Windows 11)
 - Export separated tracks
 
@@ -65,7 +65,7 @@ We are planning to develop an installer to make the installation process simpler
 
 ## ▶️ Usage
 
-- **VST3 Plugin:** Load "Lars-2.0" as an audio effect in your favorite DAW, load a stereo track, and adjust the demixing parameters.
+- **VST3 Plugin:** Load "Lars-2.0" as an audio effect in your favorite DAW, load a track, and adjust the demixing parameters.
 - **Standalone:** Launch the application, load the audio file, and start the drum demixing process. Export the separated tracks when finished.
 
 ---
