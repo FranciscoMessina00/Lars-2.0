@@ -544,20 +544,36 @@ void AudioPluginAudioProcessorEditor::setTrackButtons(int length) {
 }
 
 void AudioPluginAudioProcessorEditor::setSvgButton(juce::String svg, juce::DrawableButton* button) {
-    juce::File desktopFolder =
-      juce::File::getSpecialLocation(juce::File::userDesktopDirectory);
-  juce::File svgFileOnDesktop = desktopFolder.getChildFile(svg);
-  std::unique_ptr<juce::XmlElement> xml(
-      juce::XmlDocument::parse(svgFileOnDesktop));
+  auto res = getSvgResource(svg);
+  if (res.data == nullptr || res.dataSize <= 0) {
+    juce::Logger::writeToLog("SVG resource not found: " + svg);
+    return;
+  }
+
+  juce::MemoryInputStream svgStream(res.data, static_cast<size_t>(res.dataSize),
+                                    false);
+
+  juce::String svgXml = svgStream.readEntireStreamAsString();
+
+  std::unique_ptr<juce::XmlElement> xml(juce::XmlDocument::parse(svgXml));
+
+  if (!xml) {
+    juce::Logger::writeToLog("Failed to parse SVG: " + svg);
+    return;
+  }
+
   std::unique_ptr<juce::Drawable> drawable(juce::Drawable::createFromSVG(*xml));
+  if (!drawable) {
+    juce::Logger::writeToLog("createFromSVG failed: " + svg);
+    return;
+  }
 
   if (drawable != nullptr) {
     button->setImages(drawable.get());
     drawable.release();
   } else {
     // Couldn’t create a Drawable from the parsed XML
-    juce::Logger::writeToLog("Error: createFromSVG() returned nullptr for " +
-                             svgFileOnDesktop.getFullPathName());
+    juce::Logger::writeToLog("Error: createFromSVG() returned nullptr for ");
   }
 }
 
@@ -565,12 +581,17 @@ void AudioPluginAudioProcessorEditor::setImageButton(
     juce::String image,
     juce::ImageButton* button,
     bool invertColours) {
-  juce::File desktopFolder =
-      juce::File::getSpecialLocation(juce::File::userDesktopDirectory);
-  juce::File imageFileOnDesktop = desktopFolder.getChildFile(image);
-
-  if (imageFileOnDesktop.exists()) {
-    juce::Image img = juce::ImageCache::getFromFile(imageFileOnDesktop);
+    
+  auto res = getImageResource(image);
+  if (res.data == nullptr || res.dataSize <= 0) {
+    juce::Logger::writeToLog("Resource not found: " + image);
+      return;
+  }
+  
+  juce::Image img = juce::ImageCache::getFromMemory(res.data, res.dataSize);
+  
+  if (img.isValid()) {
+    
     img.duplicateIfShared();
     if (invertColours && img.isValid()) {
       for (int y = 0; y < img.getHeight(); ++y) {
@@ -593,8 +614,7 @@ void AudioPluginAudioProcessorEditor::setImageButton(
                       0.0f);
   } else {
     // Couldn’t create a Drawable from the parsed XML
-    juce::Logger::writeToLog("Error: loding image returned nullptr for " +
-                             imageFileOnDesktop.getFullPathName());
+    juce::Logger::writeToLog("Error: loding image returned nullptr");
   }
 }
 

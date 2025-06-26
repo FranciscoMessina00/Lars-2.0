@@ -29,14 +29,14 @@ static Resource getImageResource(const juce::String& name) {
     return {BinaryData::Hihat_png, BinaryData::Hihat_pngSize};
   else if (name == "Crash.png")
     return { BinaryData::Crash_png, BinaryData::Crash_pngSize};
+  else if (name == "divide_image.png")
+    return {BinaryData::divide_image_png, BinaryData::divide_image_pngSize};
   else
     return { nullptr, 0 };
 }
 
 static Resource getSvgResource(const juce::String& name) {
-  if (name == "divide_image.svg")
-    return {BinaryData::divide_image_png, BinaryData::divide_image_pngSize};
-  else if (name == "download_button.svg")
+  if (name == "download_button.svg")
     return {BinaryData::download_button_svg, BinaryData::download_button_svgSize};
   else if (name == "pause_button.svg")
     return {BinaryData::pause_button_svg, BinaryData::pause_button_svgSize};
