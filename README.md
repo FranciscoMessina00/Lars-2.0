@@ -72,7 +72,7 @@ This will automatically install JUCE 8.0.2. It will also set up the testing pipe
 
 To make the VST3 work properly, libtorch's DLLs inside `.\libtorch\lib\` must be placed inside the `System32` folder, or the path to `.\libtorch\lib\` must be added to the system's global PATH environment variable. We acknowledge this is not the ideal installation process, but currently, it is the only way we have managed to get the VST3 working on Windows. There does not seem to be an easy solution for making libtorch work with the VST3 format. For more details, do not hesitate to contact us. For the standalone version, it is sufficient to leave the DLLs inside the same folder as the executable file.
 
-Furthermore, the `.pt` files, which are the separation models, must be in the same folder as the VST3/standalone.
+Furthermore, the `.pt` files, which are the separation models, must be in the same folder as the VST3/standalone. If the program gives an error in finding the models it could be that the download of the repository failed to save them properly. If so, try to download them manually, place them inside the `.\models` folder and recompile the whole project
 
 We are planning to develop an installer to make the installation process simpler and faster.
 
