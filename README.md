@@ -44,7 +44,33 @@ Lars-2.0 leverages advanced audio processing and machine learning techniques to 
 
 ```bash
 git clone https://github.com/FranciscoMessina00/Lars-2.0.git
+````
+
+> 🛑 **Note about Git LFS (Large File Storage)**
+> This repository uses **Git LFS** to store large model files (e.g., `mdx23c.pt`).
+> If you encounter an error like:
+
 ```
+Error downloading object: models/mdx23c.pt [...] This repository exceeded its LFS budget.
+```
+
+It means the GitHub LFS quota has been exceeded.
+
+#### ✅ Workaround: Manually download the model
+
+1. Manually download the model file `mdx23c.pt`, `mdx23c_capstone.pt`, and `mdx23c_inst_sep.pt`.
+2. Create the `models/` directory inside the cloned repository if it doesn't already exist:
+
+   ```bash
+   mkdir -p Lars-2.0/models
+   ```
+3. Move the downloaded model files into that folder, for example:
+
+   ```
+   Lars-2.0/models/mdx23c.pt
+   ```
+
+After that, everything should work as expected.
 
 #### **Download Libtorch**
    Grab the CPU-only Libtorch release (v2.6.0) ZIP from:  
@@ -72,7 +98,7 @@ This will automatically install JUCE 8.0.2. It will also set up the testing pipe
 
 To make the VST3 work properly, libtorch's DLLs inside `.\libtorch\lib\` must be placed inside the `System32` folder, or the path to `.\libtorch\lib\` must be added to the system's global PATH environment variable. We acknowledge this is not the ideal installation process, but currently, it is the only way we have managed to get the VST3 working on Windows. There does not seem to be an easy solution for making libtorch work with the VST3 format. For more details, do not hesitate to contact us. For the standalone version, it is sufficient to leave the DLLs inside the same folder as the executable file.
 
-Furthermore, the `.pt` files, which are the separation models, must be in the same folder as the VST3/standalone. If the program gives an error in finding the models it could be that the download of the repository failed to save them properly. If so, try to download them manually, place them inside the `.\models` folder and recompile the whole project
+Furthermore, the `.pt` files, which are the separation models, must be in the same folder as the VST3/standalone. If the program gives an error in finding the models it could be that the download of the repository failed to save them properly. If so, try to download them manually, place them inside the `.\models` folder and recompile the whole project.
 
 We are planning to develop an installer to make the installation process simpler and faster.
 
