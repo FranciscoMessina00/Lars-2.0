@@ -23,7 +23,7 @@ Lars-2.0 leverages advanced audio processing and machine learning techniques to 
 
 ## 📸 Screenshot
 
-_Add screenshots of the interface here, if available._
+![Drum demixer](https://github.com/user-attachments/assets/5be14650-e0a6-4a70-b67a-46c67f4fb934)
 
 ---
 
