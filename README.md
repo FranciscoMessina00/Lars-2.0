@@ -1,8 +1,9 @@
 # Lars-2.0
 
-Lars-2.0 is a Windows-compatible VST3 plugin and standalone application designed for music drum demixing: it intelligently separates drum tracks from the rest of a song, making remixing, production, sampling, and musical practice easier.
+Lars-2.0 is a Windows-compatible VST3 plugin and standalone application designed for drum demixing in music tracks. Developed by students at Politecnico di Milano, it intelligently separates drum elements from the rest of a song, making remixing, production, sampling, and musical practice easier. 
 
----
+This is the second version of Lars — the first drum demixing plugin created by students of Politecnico di Milano.
+
 
 ## 🎵 Description
 
@@ -50,14 +51,18 @@ cd Lars-2.0
 cmake -S . -B build
 ```
 
+This will automatically install JUCE 8.0.2. It will also set up the testing pipeline if the user chooses to use it—note that we have not configured or used the testing pipeline ourselves.
+
 ### Build (VST3/Standalone)
 
 - Before compiling the Visual Studio solution, ensure that the libtorch library is inside the `libs` directory.
 - Compile the desired format in Release mode.
 - After the build, the VST3 plugin and standalone software will be in `.\build\plugin\SlothPlugin_artefacts\Release`.
-- Move the VST3 folder to `C:\Program Files\Common Files\VST3` and the Standalone directory to your preferred location.
+- Move the VST3 folder to `C:\Program Files\Common Files\VST3` and the Standalone directory to your preferred location (don't change the relative position of the internal files).
 
-To make the VST3 work properly, libtorch's DLLs must be placed inside the `System32` folder, or the path to `.\libtorch\lib\` must be added to the system's global PATH environment variable. We acknowledge this is not the ideal installation process, but currently, it is the only way we have managed to get the VST3 working on Windows. There does not seem to be an easy solution for making libtorch work with the VST3 format. For more details, do not hesitate to contact us.
+To make the VST3 work properly, libtorch's DLLs inside `.\libtorch\lib\` must be placed inside the `System32` folder, or the path to `.\libtorch\lib\` must be added to the system's global PATH environment variable. We acknowledge this is not the ideal installation process, but currently, it is the only way we have managed to get the VST3 working on Windows. There does not seem to be an easy solution for making libtorch work with the VST3 format. For more details, do not hesitate to contact us. For the standalone version, it is sufficient to leave the DLLs inside the same folder as the executable file.
+
+Furthermore, the `.pt` files, which are the separation models, must be in the same folder as the VST3/standalone.
 
 We are planning to develop an installer to make the installation process simpler and faster.
 
