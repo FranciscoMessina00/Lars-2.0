@@ -305,6 +305,7 @@ void AudioPluginAudioProcessorEditor::updateTransportButtons(int sourceIndex, bo
     case 0:  // Original
       //playButton.setToggleState(isPlaying, juce::dontSendNotification);
       playButton->setEnabled(audioProcessor.transportOriginal.isFileLoaded());
+      divideButton->setEnabled(audioProcessor.transportOriginal.isFileLoaded());
       if (isPlaying)
       {
         playButton->setButtonText("S");
@@ -452,7 +453,11 @@ void AudioPluginAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event) {
           // Avvia l'operazione di drag-and-drop esterna
           // Il 'false' significa che il file non può essere mosso (solo copiato
           // dalla DAW/OS)
-          performExternalDragDropOfFiles(filesToDrag, false, sourceComponent);
+          try {
+            performExternalDragDropOfFiles(filesToDrag, false, sourceComponent);
+          } catch (const std::exception& e) {
+            juce::Logger::writeToLog("Drag failed: " + juce::String(e.what()));
+          }
 
           // NOTA: L'esecuzione si blocca qui finché il drag non finisce.
           // Dopo il drag, dobbiamo resettare i flag. Lo facciamo in mouseUp.
