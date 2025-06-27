@@ -119,7 +119,7 @@ We are planning to develop an installer to make the installation process simpler
 - Press the divide button to start audio separation. You can still listen to and navigate the file during the separation process.
 - When the process is finished, the separated tracks will be loaded in the bottom part of the device. The same transport controls are available for the visualized separated track. To change the displayed track, press one of the available track buttons.
 - You can save the separated files by dragging one of the track buttons to your desired location (even directly into an audio track in your DAW), or you can save all tracks in a single location by pressing the download button.
-- You can switch the separation model by using the drop-down menu. For more details about the separation models, please refer to the attached file.
+- You can switch the separation model by using the drop-down menu. For more details about the separation models, please refer to the file in the repo _L13_report.pdf_.
 
 ---
 
